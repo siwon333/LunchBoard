@@ -40,6 +40,12 @@
     .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
     .toast.show { opacity: 1; }
     .loading { text-align: center; padding: 32px 0; color: #9ca3af; font-size: 14px; }
+    .paste-area { background: #fffbeb; border: 1px dashed #fbbf24; border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+    .paste-area textarea { background: #fffbeb; border: none; min-height: 120px; }
+    .btn-parse { background: #f59e0b; color: #fff; border: none; border-radius: 10px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; width: 100%; }
+    .section-divider { display: flex; align-items: center; gap: 8px; margin: 14px 0 10px; }
+    .section-divider span { font-size: 11px; color: #9ca3af; white-space: nowrap; }
+    .section-divider hr { flex: 1; border: none; border-top: 1px solid #e5e7eb; }
   </style>
 </head>
 <body>
@@ -84,8 +90,15 @@
       <h2>📝 메뉴 입력</h2>
       <label>날짜</label>
       <input type="date" id="menu-date" />
-      <label>메뉴 (한 줄에 하나씩)</label>
-      <textarea id="menu-input" placeholder="밥&#10;된장찌개&#10;김치&#10;불고기"></textarea>
+
+      <div class="section-divider"><hr/><span>HWP·PDF에서 복사한 텍스트 붙여넣기</span><hr/></div>
+      <div class="paste-area">
+        <textarea id="raw-input" placeholder="급식표에서 복사한 내용을 그대로 붙여넣으세요&#10;&#10;예)&#10;1. 흑미밥 (1.5)&#10;2. 된장국 300kcal&#10;3. 돼지불고기 (1.2.5)&#10;4. 깍두기&#10;5. 사과"></textarea>
+        <button class="btn-parse" onclick="parseRaw()">✨ 자동 정리</button>
+      </div>
+
+      <div class="section-divider"><hr/><span>또는 직접 입력 (한 줄에 하나씩)</span><hr/></div>
+      <textarea id="menu-input" placeholder="흑미밥&#10;된장국&#10;돼지불고기&#10;깍두기&#10;사과"></textarea>
       <br/><br/>
       <button class="btn btn-primary" id="save-btn" onclick="saveMenu()">저장</button>
     </div>
@@ -160,6 +173,43 @@
     document.getElementById('admin-view').style.display = 'none';
     document.getElementById('pin-view').style.display = '';
     document.getElementById('pin-input').value = '';
+  };
+
+  // 글 뭉치 자동 파싱
+  window.parseRaw = () => {
+    const raw = document.getElementById('raw-input').value;
+    if (!raw.trim()) { showToast('텍스트를 먼저 붙여넣으세요'); return; }
+
+    const SKIP_WORDS = ['날짜','요일','에너지','단백질','지방','탄수화물','칼슘','철분','비타민','나트륨','식단','급식','메뉴','합계','총계','영양','원산지','학교','공지'];
+
+    const items = raw
+      // 쉼표·슬래시를 줄바꿈으로
+      .replace(/[,，、/／]+/g, '\n')
+      .split('\n')
+      .map(line => line
+        // 앞의 번호·기호 제거: "1.", "①", "1)", "•", "-", "※" 등
+        .replace(/^[\s\d①-⑳㉑-㊿\.\)\-•※◦▶▷·◆★☆▪▫\[\]【】]+/, '')
+        // 칼로리 제거: "(300kcal)", "300 kcal"
+        .replace(/[\(（]\s*\d+[\s]*[kK][cC][aA][lL]\s*[\)）]/g, '')
+        .replace(/\d+[\s]*[kK][cC][aA][lL]/g, '')
+        // 알레르기 코드 제거: "(1.2.5)", "[1,5,6]"
+        .replace(/[\(（\[【]\s*[\d\.\,\s]+[\)\)）\]】]/g, '')
+        // 남은 괄호 내용 제거
+        .replace(/[\(（][^)）]{0,20}[\)）]/g, '')
+        .trim()
+      )
+      .filter(line => {
+        if (!line || line.length < 2 || line.length > 25) return false;
+        if (!/[가-힣]/.test(line)) return false; // 한글 없으면 제외
+        if (SKIP_WORDS.some(w => line.includes(w))) return false;
+        return true;
+      });
+
+    if (!items.length) { showToast('메뉴 항목을 찾지 못했어요. 텍스트를 확인해보세요'); return; }
+
+    document.getElementById('menu-input').value = items.join('\n');
+    document.getElementById('raw-input').value = '';
+    showToast(`${items.length}개 항목이 정리됐어요 ✓`);
   };
 
   // 메뉴 저장
