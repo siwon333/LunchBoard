@@ -72,6 +72,11 @@
     .toast.show { opacity: 1; }
     .loading { text-align: center; padding: 32px 0; color: #9ca3af; font-size: 14px; }
 
+    /* Admin footer link */
+    .admin-footer { text-align: center; padding: 24px 16px 40px; }
+    .admin-link { font-size: 11px; color: #d1d5db; background: none; border: none; cursor: pointer; text-decoration: none; }
+    .admin-link:hover { color: #9ca3af; }
+
     /* Save all progress */
     .progress-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin: 8px 0; overflow: hidden; }
     .progress-fill { height: 100%; background: #10b981; border-radius: 2px; transition: width 0.3s; }
@@ -79,10 +84,6 @@
 </head>
 <body>
 
-<div class="tabs">
-  <button class="tab active" onclick="showTab('meal')">오늘의 급식</button>
-  <button class="tab" onclick="showTab('admin')">관리자</button>
-</div>
 
 <!-- 급식 탭 -->
 <div id="tab-meal">
@@ -149,6 +150,11 @@
   </div>
 </div>
 
+<!-- 관리자 진입 (하단 숨김 링크) -->
+<div id="tab-meal-footer" class="admin-footer">
+  <button class="admin-link" onclick="showAdmin()">관리자</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -193,11 +199,16 @@
     }
   });
 
-  // 탭 전환
-  window.showTab = (tab) => {
-    document.getElementById('tab-meal').style.display = tab === 'meal' ? '' : 'none';
-    document.getElementById('tab-admin').style.display = tab === 'admin' ? '' : 'none';
-    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (i===0) === (tab==='meal')));
+  // 관리자 패널 열기/닫기
+  window.showAdmin = () => {
+    document.getElementById('tab-meal').style.display = 'none';
+    document.getElementById('tab-meal-footer').style.display = 'none';
+    document.getElementById('tab-admin').style.display = '';
+  };
+  window.showMeal = () => {
+    document.getElementById('tab-admin').style.display = 'none';
+    document.getElementById('tab-meal').style.display = '';
+    document.getElementById('tab-meal-footer').style.display = '';
   };
 
   // PIN
@@ -215,6 +226,7 @@
     document.getElementById('admin-view').style.display = 'none';
     document.getElementById('pin-view').style.display = '';
     document.getElementById('pin-input').value = '';
+    showMeal();
   };
 
   // ─── CSV 파서 ────────────────────────────────────────────
