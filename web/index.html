@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오늘의 급식</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9fafb; color: #111827; }
+    .header { background: #fff; padding: 24px 16px 16px; border-bottom: 1px solid #f3f4f6; }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header p { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+    .card { margin: 16px; background: #fff; border-radius: 16px; border: 1px solid #f3f4f6; padding: 16px; }
+    .card h2 { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 12px; }
+    .menu-item { background: #f9fafb; border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; font-size: 14px; color: #1f2937; }
+    .empty { text-align: center; padding: 32px 0; }
+    .empty .emoji { font-size: 32px; margin-bottom: 8px; }
+    .empty p { font-size: 14px; color: #9ca3af; }
+    .tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #fff; position: sticky; top: 0; z-index: 10; }
+    .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280; border: none; background: none; cursor: pointer; }
+    .tab.active { color: #0ea5e9; border-bottom: 2px solid #0ea5e9; }
+
+    /* PIN */
+    .pin-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; padding: 32px; }
+    .pin-screen .emoji { font-size: 40px; margin-bottom: 8px; }
+    .pin-screen h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .pin-screen p { font-size: 13px; color: #9ca3af; margin-bottom: 24px; }
+
+    /* Inputs */
+    input[type="password"], input[type="text"], input[type="date"], input[type="month"], textarea {
+      width: 100%; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 12px; font-size: 14px; outline: none; background: #f9fafb; color: #111827;
+    }
+    input[type="password"] { text-align: center; font-size: 20px; letter-spacing: 8px; margin-bottom: 12px; }
+    textarea { min-height: 140px; resize: vertical; font-family: inherit; }
+    label { font-size: 12px; color: #6b7280; margin-bottom: 4px; display: block; margin-top: 12px; }
+
+    /* Buttons */
+    .btn { display: block; width: 100%; padding: 12px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #0ea5e9; color: #fff; }
+    .btn-primary:disabled { background: #bae6fd; cursor: default; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:disabled { background: #a7f3d0; cursor: default; }
+    .btn-amber { background: #f59e0b; color: #fff; }
+    .btn-lock { background: #f3f4f6; color: #6b7280; font-size: 12px; padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; }
+
+    /* Admin header */
+    .admin-header { display: flex; align-items: flex-end; justify-content: space-between; background: #fff; padding: 24px 16px 16px; border-bottom: 1px solid #f3f4f6; }
+
+    /* Step indicator */
+    .step-label { font-size: 11px; font-weight: 700; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+    /* Monthly paste */
+    .paste-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .paste-row input { flex: 1; }
+    .paste-row button { white-space: nowrap; padding: 0 16px; border-radius: 12px; background: #f59e0b; color: #fff; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #raw-input { min-height: 160px; background: #fffbeb; border-color: #fbbf24; }
+
+    /* Day button grid */
+    .day-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .day-btn { padding: 8px 14px; border-radius: 10px; border: 1.5px solid #e5e7eb; background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; color: #374151; }
+    .day-btn:hover { border-color: #0ea5e9; color: #0ea5e9; }
+    .day-btn.selected { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+    .day-btn.saved { border-color: #10b981; color: #10b981; }
+    .day-btn.saved.selected { background: #10b981; color: #fff; border-color: #10b981; }
+
+    /* Divider */
+    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 16px 0; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; }
+    .loading { text-align: center; padding: 32px 0; color: #9ca3af; font-size: 14px; }
+
+    /* Save all progress */
+    .progress-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin: 8px 0; overflow: hidden; }
+    .progress-fill { height: 100%; background: #10b981; border-radius: 2px; transition: width 0.3s; }
+  </style>
+</head>
+<body>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('meal')">오늘의 급식</button>
+  <button class="tab" onclick="showTab('admin')">관리자</button>
+</div>
+
+<!-- 급식 탭 -->
+<div id="tab-meal">
+  <div class="header">
+    <h1>오늘의 급식</h1>
+    <p id="today-label"></p>
+  </div>
+  <div class="card">
+    <h2>오늘의 메뉴</h2>
+    <div id="menu-list"><div class="loading">불러오는 중...</div></div>
+  </div>
+</div>
+
+<!-- 관리자 탭 -->
+<div id="tab-admin" style="display:none">
+  <div id="pin-view">
+    <div class="pin-screen">
+      <div class="emoji">🔒</div>
+      <h2>관리자 전용</h2>
+      <p>PIN을 입력하세요</p>
+      <input type="password" id="pin-input" maxlength="8" placeholder="PIN" onkeydown="if(event.key==='Enter')checkPin()" />
+      <button class="btn btn-primary" onclick="checkPin()">입장</button>
+    </div>
+  </div>
+
+  <div id="admin-view" style="display:none">
+    <div class="admin-header">
+      <div>
+        <h1 style="font-size:20px;font-weight:700">관리자</h1>
+        <p style="font-size:12px;color:#9ca3af;margin-top:2px">급식 메뉴를 등록해요</p>
+      </div>
+      <button class="btn-lock" onclick="lockAdmin()">잠금</button>
+    </div>
+
+    <!-- STEP 1: 월간 붙여넣기 -->
+    <div class="card">
+      <div class="step-label">Step 1 — 월간 급식표 붙여넣기</div>
+      <div class="paste-row">
+        <input type="month" id="raw-month" />
+        <button onclick="parseMonthly()">✨ 분석</button>
+      </div>
+      <textarea id="raw-input" placeholder="date,menu 형식의 CSV를 붙여넣으세요.&#10;&#10;date,menu&#10;3,현미밥|사골순대국|콩나물무침|목살스테이크&#10;4,미니밥|베트남쌀국수|배추김치&#10;5,친환경흰쌀밥|황태콩나물국|계란찜"></textarea>
+    </div>
+
+    <!-- STEP 2: 날짜 선택 (분석 후 표시) -->
+    <div class="card" id="step2" style="display:none">
+      <div class="step-label">Step 2 — 날짜 선택</div>
+      <div class="day-grid" id="day-grid"></div>
+      <hr class="divider" />
+      <button class="btn btn-success" id="save-all-btn" onclick="saveAll()">📅 전체 저장 (모든 날짜 한 번에)</button>
+      <div class="progress-bar" id="progress-bar" style="display:none"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- STEP 3: 선택한 날 확인·수정 후 저장 -->
+    <div class="card" id="step3" style="display:none">
+      <div class="step-label">Step 3 — 확인 및 저장</div>
+      <label>날짜</label>
+      <input type="date" id="menu-date" />
+      <label>메뉴 (한 줄에 하나씩, 수정 가능)</label>
+      <textarea id="menu-input" placeholder="메뉴 항목"></textarea>
+      <br/>
+      <button class="btn btn-primary" id="save-btn" onclick="saveOne()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+  import { getFirestore, doc, onSnapshot, setDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: '__FIREBASE_API_KEY__',
+    authDomain: '__FIREBASE_PROJECT_ID__.firebaseapp.com',
+    projectId: '__FIREBASE_PROJECT_ID__',
+    storageBucket: '__FIREBASE_STORAGE_BUCKET__',
+    appId: '__FIREBASE_APP_ID__',
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const ADMIN_PIN = '1234';
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function koreanDate(s) {
+    const [y, m, day] = s.split('-');
+    return `${y}년 ${parseInt(m)}월 ${parseInt(day)}일`;
+  }
+
+  const today = todayStr();
+  document.getElementById('today-label').textContent = koreanDate(today);
+  // 기본 월을 현재 월로
+  document.getElementById('raw-month').value = today.slice(0, 7);
+
+  // 메뉴 실시간 구독
+  onSnapshot(doc(db, 'mealMenus', today), (snap) => {
+    const list = document.getElementById('menu-list');
+    if (snap.exists() && snap.data().items.length > 0) {
+      list.innerHTML = snap.data().items.map(item =>
+        `<div class="menu-item">${item}</div>`
+      ).join('');
+    } else {
+      list.innerHTML = `<div class="empty"><div class="emoji">🍱</div><p>오늘 메뉴가 아직 등록되지 않았어요</p></div>`;
+    }
+  });
+
+  // 탭 전환
+  window.showTab = (tab) => {
+    document.getElementById('tab-meal').style.display = tab === 'meal' ? '' : 'none';
+    document.getElementById('tab-admin').style.display = tab === 'admin' ? '' : 'none';
+    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (i===0) === (tab==='meal')));
+  };
+
+  // PIN
+  window.checkPin = () => {
+    const pin = document.getElementById('pin-input').value;
+    if (pin === ADMIN_PIN) {
+      document.getElementById('pin-view').style.display = 'none';
+      document.getElementById('admin-view').style.display = '';
+    } else {
+      showToast('PIN이 틀렸습니다');
+      document.getElementById('pin-input').value = '';
+    }
+  };
+  window.lockAdmin = () => {
+    document.getElementById('admin-view').style.display = 'none';
+    document.getElementById('pin-view').style.display = '';
+    document.getElementById('pin-input').value = '';
+  };
+
+  // ─── CSV 파서 ────────────────────────────────────────────
+  // 형식: date,menu (헤더) 이후 각 줄: 일,항목1|항목2|항목3
+
+  let parsedMenu = {}; // { 'YYYY-MM-DD': ['item1', ...] }
+
+  window.parseMonthly = () => {
+    const raw = document.getElementById('raw-input').value.trim();
+    const yearMonth = document.getElementById('raw-month').value;
+    if (!raw) { showToast('CSV를 붙여넣으세요'); return; }
+    if (!yearMonth) { showToast('연월을 선택하세요'); return; }
+
+    const [year, month] = yearMonth.split('-').map(Number);
+
+    parsedMenu = {};
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      if (line.startsWith('date')) continue; // 헤더 스킵
+      const comma = line.indexOf(',');
+      if (comma === -1) continue;
+      const day = parseInt(line.slice(0, comma));
+      if (!day) continue;
+      const items = line.slice(comma + 1).split('|').map(s => s.trim()).filter(Boolean);
+      if (items.length) {
+        const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        parsedMenu[dateStr] = items;
+      }
+    }
+
+    if (!Object.keys(parsedMenu).length) { showToast('파싱 실패: 형식을 확인하세요 (3,밥|국|반찬)'); return; }
+
+    renderDayGrid();
+    document.getElementById('step2').style.display = '';
+    document.getElementById('step3').style.display = 'none';
+    showToast(`${Object.keys(parsedMenu).length}일치 메뉴를 불러왔어요 ✓`);
+  };
+
+  function renderDayGrid() {
+    const grid = document.getElementById('day-grid');
+    grid.innerHTML = Object.keys(parsedMenu).sort().map(dateStr => {
+      const day = parseInt(dateStr.split('-')[2]);
+      const d = new Date(dateStr + 'T00:00:00');
+      const DOW = ['일','월','화','수','목','금','토'][d.getDay()];
+      return `<button class="day-btn" data-date="${dateStr}" onclick="selectDay('${dateStr}')">${day}(${DOW})</button>`;
+    }).join('');
+  }
+
+  window.selectDay = (dateStr) => {
+    document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+    const btn = document.querySelector(`.day-btn[data-date="${dateStr}"]`);
+    if (btn) btn.classList.add('selected');
+
+    document.getElementById('menu-date').value = dateStr;
+    document.getElementById('menu-input').value = parsedMenu[dateStr].join('\n');
+    document.getElementById('step3').style.display = '';
+    document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // 선택한 날 하나만 저장
+  window.saveOne = async () => {
+    const date = document.getElementById('menu-date').value;
+    const items = document.getElementById('menu-input').value.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!items.length || !date) { showToast('날짜와 메뉴를 확인하세요'); return; }
+
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true; btn.textContent = '저장 중...';
+    try {
+      await setDoc(doc(db, 'mealMenus', date), { date, items });
+      // 저장된 날짜 버튼 초록 표시
+      const dayBtn = document.querySelector(`.day-btn[data-date="${date}"]`);
+      if (dayBtn) dayBtn.classList.add('saved');
+      showToast(`${koreanDate(date)} 저장됐어요 ✓`);
+    } catch {
+      showToast('저장에 실패했어요');
+    } finally {
+      btn.disabled = false; btn.textContent = '저장';
+    }
+  };
+
+  // 전체 날짜 한 번에 저장
+  window.saveAll = async () => {
+    const dates = Object.keys(parsedMenu);
+    if (!dates.length) return;
+    const btn = document.getElementById('save-all-btn');
+    const bar = document.getElementById('progress-bar');
+    const fill = document.getElementById('progress-fill');
+    btn.disabled = true; btn.textContent = `저장 중... (0/${dates.length})`;
+    bar.style.display = '';
+    fill.style.width = '0%';
+
+    let done = 0;
+    for (const date of dates.sort()) {
+      try {
+        await setDoc(doc(db, 'mealMenus', date), { date, items: parsedMenu[date] });
+        const dayBtn = document.querySelector(`.day-btn[data-date="${date}"]`);
+        if (dayBtn) dayBtn.classList.add('saved');
+      } catch { /* 실패한 날짜는 그냥 넘김 */ }
+      done++;
+      fill.style.width = `${Math.round(done / dates.length * 100)}%`;
+      btn.textContent = `저장 중... (${done}/${dates.length})`;
+    }
+
+    btn.disabled = false; btn.textContent = '📅 전체 저장 (모든 날짜 한 번에)';
+    showToast(`${dates.length}일치 메뉴를 모두 저장했어요 ✓`);
+  };
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+</script>
+</body>
+</html>
