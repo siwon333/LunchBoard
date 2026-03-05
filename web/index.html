@@ -16,36 +16,65 @@
     .empty { text-align: center; padding: 32px 0; }
     .empty .emoji { font-size: 32px; margin-bottom: 8px; }
     .empty p { font-size: 14px; color: #9ca3af; }
-    .tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #fff; }
+    .tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #fff; position: sticky; top: 0; z-index: 10; }
     .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280; border: none; background: none; cursor: pointer; }
     .tab.active { color: #0ea5e9; border-bottom: 2px solid #0ea5e9; }
 
-    /* 관리자 */
+    /* PIN */
     .pin-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; padding: 32px; }
     .pin-screen .emoji { font-size: 40px; margin-bottom: 8px; }
     .pin-screen h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
     .pin-screen p { font-size: 13px; color: #9ca3af; margin-bottom: 24px; }
-    input[type="password"], input[type="text"], input[type="date"], textarea {
+
+    /* Inputs */
+    input[type="password"], input[type="text"], input[type="date"], input[type="month"], textarea {
       width: 100%; border: 1px solid #e5e7eb; border-radius: 12px;
       padding: 12px; font-size: 14px; outline: none; background: #f9fafb; color: #111827;
     }
     input[type="password"] { text-align: center; font-size: 20px; letter-spacing: 8px; margin-bottom: 12px; }
-    textarea { min-height: 180px; resize: vertical; font-family: inherit; }
+    textarea { min-height: 140px; resize: vertical; font-family: inherit; }
     label { font-size: 12px; color: #6b7280; margin-bottom: 4px; display: block; margin-top: 12px; }
+
+    /* Buttons */
     .btn { display: block; width: 100%; padding: 12px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
-    .btn-primary { background: #0ea5e9; color: #fff; margin-top: 0; }
+    .btn-primary { background: #0ea5e9; color: #fff; }
     .btn-primary:disabled { background: #bae6fd; cursor: default; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:disabled { background: #a7f3d0; cursor: default; }
+    .btn-amber { background: #f59e0b; color: #fff; }
     .btn-lock { background: #f3f4f6; color: #6b7280; font-size: 12px; padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; }
+
+    /* Admin header */
     .admin-header { display: flex; align-items: flex-end; justify-content: space-between; background: #fff; padding: 24px 16px 16px; border-bottom: 1px solid #f3f4f6; }
-    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+
+    /* Step indicator */
+    .step-label { font-size: 11px; font-weight: 700; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+    /* Monthly paste */
+    .paste-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .paste-row input { flex: 1; }
+    .paste-row button { white-space: nowrap; padding: 0 16px; border-radius: 12px; background: #f59e0b; color: #fff; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #raw-input { min-height: 160px; background: #fffbeb; border-color: #fbbf24; }
+
+    /* Day button grid */
+    .day-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .day-btn { padding: 8px 14px; border-radius: 10px; border: 1.5px solid #e5e7eb; background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; color: #374151; }
+    .day-btn:hover { border-color: #0ea5e9; color: #0ea5e9; }
+    .day-btn.selected { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+    .day-btn.saved { border-color: #10b981; color: #10b981; }
+    .day-btn.saved.selected { background: #10b981; color: #fff; border-color: #10b981; }
+
+    /* Divider */
+    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 16px 0; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
     .toast.show { opacity: 1; }
     .loading { text-align: center; padding: 32px 0; color: #9ca3af; font-size: 14px; }
-    .paste-area { background: #fffbeb; border: 1px dashed #fbbf24; border-radius: 12px; padding: 12px; margin-bottom: 8px; }
-    .paste-area textarea { background: #fffbeb; border: none; min-height: 120px; }
-    .btn-parse { background: #f59e0b; color: #fff; border: none; border-radius: 10px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; width: 100%; }
-    .section-divider { display: flex; align-items: center; gap: 8px; margin: 14px 0 10px; }
-    .section-divider span { font-size: 11px; color: #9ca3af; white-space: nowrap; }
-    .section-divider hr { flex: 1; border: none; border-top: 1px solid #e5e7eb; }
+
+    /* Save all progress */
+    .progress-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin: 8px 0; overflow: hidden; }
+    .progress-fill { height: 100%; background: #10b981; border-radius: 2px; transition: width 0.3s; }
   </style>
 </head>
 <body>
@@ -78,6 +107,7 @@
       <button class="btn btn-primary" onclick="checkPin()">입장</button>
     </div>
   </div>
+
   <div id="admin-view" style="display:none">
     <div class="admin-header">
       <div>
@@ -86,21 +116,35 @@
       </div>
       <button class="btn-lock" onclick="lockAdmin()">잠금</button>
     </div>
+
+    <!-- STEP 1: 월간 붙여넣기 -->
     <div class="card">
-      <h2>📝 메뉴 입력</h2>
+      <div class="step-label">Step 1 — 월간 급식표 붙여넣기</div>
+      <div class="paste-row">
+        <input type="month" id="raw-month" />
+        <button onclick="parseMonthly()">✨ 분석</button>
+      </div>
+      <textarea id="raw-input" placeholder="HWP·PDF에서 복사한 급식표 전체를 붙여넣으세요.&#10;날짜, 알레르기 코드, 영양 정보는 자동으로 걷어냅니다."></textarea>
+    </div>
+
+    <!-- STEP 2: 날짜 선택 (분석 후 표시) -->
+    <div class="card" id="step2" style="display:none">
+      <div class="step-label">Step 2 — 날짜 선택</div>
+      <div class="day-grid" id="day-grid"></div>
+      <hr class="divider" />
+      <button class="btn btn-success" id="save-all-btn" onclick="saveAll()">📅 전체 저장 (모든 날짜 한 번에)</button>
+      <div class="progress-bar" id="progress-bar" style="display:none"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- STEP 3: 선택한 날 확인·수정 후 저장 -->
+    <div class="card" id="step3" style="display:none">
+      <div class="step-label">Step 3 — 확인 및 저장</div>
       <label>날짜</label>
       <input type="date" id="menu-date" />
-
-      <div class="section-divider"><hr/><span>HWP·PDF에서 복사한 텍스트 붙여넣기</span><hr/></div>
-      <div class="paste-area">
-        <textarea id="raw-input" placeholder="급식표에서 복사한 내용을 그대로 붙여넣으세요&#10;&#10;예)&#10;1. 흑미밥 (1.5)&#10;2. 된장국 300kcal&#10;3. 돼지불고기 (1.2.5)&#10;4. 깍두기&#10;5. 사과"></textarea>
-        <button class="btn-parse" onclick="parseRaw()">✨ 자동 정리</button>
-      </div>
-
-      <div class="section-divider"><hr/><span>또는 직접 입력 (한 줄에 하나씩)</span><hr/></div>
-      <textarea id="menu-input" placeholder="흑미밥&#10;된장국&#10;돼지불고기&#10;깍두기&#10;사과"></textarea>
-      <br/><br/>
-      <button class="btn btn-primary" id="save-btn" onclick="saveMenu()">저장</button>
+      <label>메뉴 (한 줄에 하나씩, 수정 가능)</label>
+      <textarea id="menu-input" placeholder="메뉴 항목"></textarea>
+      <br/>
+      <button class="btn btn-primary" id="save-btn" onclick="saveOne()">저장</button>
     </div>
   </div>
 </div>
@@ -127,16 +171,15 @@
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
-
   function koreanDate(s) {
     const [y, m, day] = s.split('-');
     return `${y}년 ${parseInt(m)}월 ${parseInt(day)}일`;
   }
 
-  // 날짜 라벨
   const today = todayStr();
   document.getElementById('today-label').textContent = koreanDate(today);
-  document.getElementById('menu-date').value = today;
+  // 기본 월을 현재 월로
+  document.getElementById('raw-month').value = today.slice(0, 7);
 
   // 메뉴 실시간 구독
   onSnapshot(doc(db, 'mealMenus', today), (snap) => {
@@ -168,61 +211,117 @@
       document.getElementById('pin-input').value = '';
     }
   };
-
   window.lockAdmin = () => {
     document.getElementById('admin-view').style.display = 'none';
     document.getElementById('pin-view').style.display = '';
     document.getElementById('pin-input').value = '';
   };
 
-  // 글 뭉치 자동 파싱
-  window.parseRaw = () => {
+  // ─── 월간 파서 ───────────────────────────────────────────
+  const SKIP_WORDS = ['날짜','요일','에너지','단백질','지방','탄수화물','칼슘','철분','비타민','나트륨',
+    '식단','급식','메뉴','합계','총계','영양','원산지','학교','공지','알레르기','수급','식재료',
+    '문의','점심','중식','석식','배식','반출','식중독','이상','이하','식당','표시','기타','추후'];
+
+  function cleanItem(line) {
+    return line
+      .replace(/[\(（\[【]\s*[\d\.\,\s]+[\)\)）\]】]/g, '') // 알레르기 코드 (1.2.5)
+      .replace(/[\(（][^)）]{0,20}[\)）]/g, '')             // 기타 괄호
+      .replace(/\d+[\s]*[kK][cC][aA][lL]/g, '')            // kcal
+      .replace(/[①-⑳㉑-㊿]/g, '')                          // 원문자
+      .trim();
+  }
+
+  function isValidItem(line) {
+    if (!line || line.length < 2 || line.length > 30) return false;
+    if (!/[가-힣]/.test(line)) return false;
+    if (SKIP_WORDS.some(w => line.includes(w))) return false;
+    // 숫자만 또는 기호만인 경우 제외
+    if (/^[\d\s\.\,\-\/]+$/.test(line)) return false;
+    return true;
+  }
+
+  let parsedMenu = {}; // { 'YYYY-MM-DD': ['item1', ...] }
+
+  window.parseMonthly = () => {
     const raw = document.getElementById('raw-input').value;
-    if (!raw.trim()) { showToast('텍스트를 먼저 붙여넣으세요'); return; }
+    const yearMonth = document.getElementById('raw-month').value;
+    if (!raw.trim()) { showToast('급식표 텍스트를 붙여넣으세요'); return; }
+    if (!yearMonth) { showToast('연월을 선택하세요'); return; }
 
-    const SKIP_WORDS = ['날짜','요일','에너지','단백질','지방','탄수화물','칼슘','철분','비타민','나트륨','식단','급식','메뉴','합계','총계','영양','원산지','학교','공지'];
+    const [year, month] = yearMonth.split('-').map(Number);
 
-    const items = raw
-      // 쉼표·슬래시를 줄바꿈으로
-      .replace(/[,，、/／]+/g, '\n')
-      .split('\n')
-      .map(line => line
-        // 앞의 번호·기호 제거: "1.", "①", "1)", "•", "-", "※" 등
-        .replace(/^[\s\d①-⑳㉑-㊿\.\)\-•※◦▶▷·◆★☆▪▫\[\]【】]+/, '')
-        // 칼로리 제거: "(300kcal)", "300 kcal"
-        .replace(/[\(（]\s*\d+[\s]*[kK][cC][aA][lL]\s*[\)）]/g, '')
-        .replace(/\d+[\s]*[kK][cC][aA][lL]/g, '')
-        // 알레르기 코드 제거: "(1.2.5)", "[1,5,6]"
-        .replace(/[\(（\[【]\s*[\d\.\,\s]+[\)\)）\]】]/g, '')
-        // 남은 괄호 내용 제거
-        .replace(/[\(（][^)）]{0,20}[\)）]/g, '')
-        .trim()
-      )
-      .filter(line => {
-        if (!line || line.length < 2 || line.length > 25) return false;
-        if (!/[가-힣]/.test(line)) return false; // 한글 없으면 제외
-        if (SKIP_WORDS.some(w => line.includes(w))) return false;
-        return true;
-      });
+    // 날짜 마커 찾기: "3(화)", "11(수) 수요일은다먹는날" 등
+    // 각 날짜 마커의 위치와 일(day) 추출
+    const dateRe = /(\d{1,2})\s*[（(][월화수목금토일][）)]/g;
+    const markers = [];
+    let m;
+    while ((m = dateRe.exec(raw)) !== null) {
+      markers.push({ day: parseInt(m[1]), index: m.index, end: m.index + m[0].length });
+    }
 
-    if (!items.length) { showToast('메뉴 항목을 찾지 못했어요. 텍스트를 확인해보세요'); return; }
+    if (markers.length === 0) { showToast('날짜 형식을 찾지 못했어요 (예: 3(화), 11(수))'); return; }
 
-    document.getElementById('menu-input').value = items.join('\n');
-    document.getElementById('raw-input').value = '';
-    showToast(`${items.length}개 항목이 정리됐어요 ✓`);
+    parsedMenu = {};
+    for (let i = 0; i < markers.length; i++) {
+      const { day, end } = markers[i];
+      const nextIndex = markers[i + 1] ? markers[i + 1].index : raw.length;
+      const section = raw.slice(end, nextIndex);
+
+      // & 로 이어지는 줄 합치기 (예: "샐러드&\n드레싱" → "샐러드&드레싱")
+      const joined = section.replace(/&\s*\n+\s*/g, '& ');
+
+      const items = joined
+        .split('\n')
+        .map(cleanItem)
+        .filter(isValidItem);
+
+      if (items.length > 0) {
+        const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        parsedMenu[dateStr] = items;
+      }
+    }
+
+    renderDayGrid();
+    document.getElementById('step2').style.display = '';
+    document.getElementById('step3').style.display = 'none';
+    showToast(`${Object.keys(parsedMenu).length}일치 메뉴를 분석했어요 ✓`);
   };
 
-  // 메뉴 저장
-  window.saveMenu = async () => {
+  function renderDayGrid() {
+    const grid = document.getElementById('day-grid');
+    grid.innerHTML = Object.keys(parsedMenu).sort().map(dateStr => {
+      const day = parseInt(dateStr.split('-')[2]);
+      const d = new Date(dateStr + 'T00:00:00');
+      const DOW = ['일','월','화','수','목','금','토'][d.getDay()];
+      return `<button class="day-btn" data-date="${dateStr}" onclick="selectDay('${dateStr}')">${day}(${DOW})</button>`;
+    }).join('');
+  }
+
+  window.selectDay = (dateStr) => {
+    document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+    const btn = document.querySelector(`.day-btn[data-date="${dateStr}"]`);
+    if (btn) btn.classList.add('selected');
+
+    document.getElementById('menu-date').value = dateStr;
+    document.getElementById('menu-input').value = parsedMenu[dateStr].join('\n');
+    document.getElementById('step3').style.display = '';
+    document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // 선택한 날 하나만 저장
+  window.saveOne = async () => {
     const date = document.getElementById('menu-date').value;
-    const items = document.getElementById('menu-input').value.split('\n').map(s=>s.trim()).filter(Boolean);
-    if (!items.length) { showToast('메뉴를 입력해주세요'); return; }
+    const items = document.getElementById('menu-input').value.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!items.length || !date) { showToast('날짜와 메뉴를 확인하세요'); return; }
+
     const btn = document.getElementById('save-btn');
     btn.disabled = true; btn.textContent = '저장 중...';
     try {
       await setDoc(doc(db, 'mealMenus', date), { date, items });
-      showToast(`${date} 메뉴가 저장됐어요`);
-      document.getElementById('menu-input').value = '';
+      // 저장된 날짜 버튼 초록 표시
+      const dayBtn = document.querySelector(`.day-btn[data-date="${date}"]`);
+      if (dayBtn) dayBtn.classList.add('saved');
+      showToast(`${koreanDate(date)} 저장됐어요 ✓`);
     } catch {
       showToast('저장에 실패했어요');
     } finally {
@@ -230,10 +329,37 @@
     }
   };
 
+  // 전체 날짜 한 번에 저장
+  window.saveAll = async () => {
+    const dates = Object.keys(parsedMenu);
+    if (!dates.length) return;
+    const btn = document.getElementById('save-all-btn');
+    const bar = document.getElementById('progress-bar');
+    const fill = document.getElementById('progress-fill');
+    btn.disabled = true; btn.textContent = `저장 중... (0/${dates.length})`;
+    bar.style.display = '';
+    fill.style.width = '0%';
+
+    let done = 0;
+    for (const date of dates.sort()) {
+      try {
+        await setDoc(doc(db, 'mealMenus', date), { date, items: parsedMenu[date] });
+        const dayBtn = document.querySelector(`.day-btn[data-date="${date}"]`);
+        if (dayBtn) dayBtn.classList.add('saved');
+      } catch { /* 실패한 날짜는 그냥 넘김 */ }
+      done++;
+      fill.style.width = `${Math.round(done / dates.length * 100)}%`;
+      btn.textContent = `저장 중... (${done}/${dates.length})`;
+    }
+
+    btn.disabled = false; btn.textContent = '📅 전체 저장 (모든 날짜 한 번에)';
+    showToast(`${dates.length}일치 메뉴를 모두 저장했어요 ✓`);
+  };
+
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
+    setTimeout(() => t.classList.remove('show'), 2800);
   }
 </script>
 </body>
