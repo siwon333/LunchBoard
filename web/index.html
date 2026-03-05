@@ -124,7 +124,7 @@
         <input type="month" id="raw-month" />
         <button onclick="parseMonthly()">✨ 분석</button>
       </div>
-      <textarea id="raw-input" placeholder="HWP·PDF에서 복사한 급식표 전체를 붙여넣으세요.&#10;날짜, 알레르기 코드, 영양 정보는 자동으로 걷어냅니다."></textarea>
+      <textarea id="raw-input" placeholder="date,menu 형식의 CSV를 붙여넣으세요.&#10;&#10;date,menu&#10;3,현미밥|사골순대국|콩나물무침|목살스테이크&#10;4,미니밥|베트남쌀국수|배추김치&#10;5,친환경흰쌀밥|황태콩나물국|계란찜"></textarea>
     </div>
 
     <!-- STEP 2: 날짜 선택 (분석 후 표시) -->
@@ -217,74 +217,40 @@
     document.getElementById('pin-input').value = '';
   };
 
-  // ─── 월간 파서 ───────────────────────────────────────────
-  const SKIP_WORDS = ['날짜','요일','에너지','단백질','지방','탄수화물','칼슘','철분','비타민','나트륨',
-    '식단','급식','메뉴','합계','총계','영양','원산지','학교','공지','알레르기','수급','식재료',
-    '문의','점심','중식','석식','배식','반출','식중독','이상','이하','식당','표시','기타','추후'];
-
-  function cleanItem(line) {
-    return line
-      .replace(/[\(（\[【]\s*[\d\.\,\s]+[\)\)）\]】]/g, '') // 알레르기 코드 (1.2.5)
-      .replace(/[\(（][^)）]{0,20}[\)）]/g, '')             // 기타 괄호
-      .replace(/\d+[\s]*[kK][cC][aA][lL]/g, '')            // kcal
-      .replace(/[①-⑳㉑-㊿]/g, '')                          // 원문자
-      .trim();
-  }
-
-  function isValidItem(line) {
-    if (!line || line.length < 2 || line.length > 30) return false;
-    if (!/[가-힣]/.test(line)) return false;
-    if (SKIP_WORDS.some(w => line.includes(w))) return false;
-    // 숫자만 또는 기호만인 경우 제외
-    if (/^[\d\s\.\,\-\/]+$/.test(line)) return false;
-    return true;
-  }
+  // ─── CSV 파서 ────────────────────────────────────────────
+  // 형식: date,menu (헤더) 이후 각 줄: 일,항목1|항목2|항목3
 
   let parsedMenu = {}; // { 'YYYY-MM-DD': ['item1', ...] }
 
   window.parseMonthly = () => {
-    const raw = document.getElementById('raw-input').value;
+    const raw = document.getElementById('raw-input').value.trim();
     const yearMonth = document.getElementById('raw-month').value;
-    if (!raw.trim()) { showToast('급식표 텍스트를 붙여넣으세요'); return; }
+    if (!raw) { showToast('CSV를 붙여넣으세요'); return; }
     if (!yearMonth) { showToast('연월을 선택하세요'); return; }
 
     const [year, month] = yearMonth.split('-').map(Number);
 
-    // 날짜 마커 찾기: "3(화)", "11(수) 수요일은다먹는날" 등
-    // 각 날짜 마커의 위치와 일(day) 추출
-    const dateRe = /(\d{1,2})\s*[（(][월화수목금토일][）)]/g;
-    const markers = [];
-    let m;
-    while ((m = dateRe.exec(raw)) !== null) {
-      markers.push({ day: parseInt(m[1]), index: m.index, end: m.index + m[0].length });
-    }
-
-    if (markers.length === 0) { showToast('날짜 형식을 찾지 못했어요 (예: 3(화), 11(수))'); return; }
-
     parsedMenu = {};
-    for (let i = 0; i < markers.length; i++) {
-      const { day, end } = markers[i];
-      const nextIndex = markers[i + 1] ? markers[i + 1].index : raw.length;
-      const section = raw.slice(end, nextIndex);
-
-      // & 로 이어지는 줄 합치기 (예: "샐러드&\n드레싱" → "샐러드&드레싱")
-      const joined = section.replace(/&\s*\n+\s*/g, '& ');
-
-      const items = joined
-        .split('\n')
-        .map(cleanItem)
-        .filter(isValidItem);
-
-      if (items.length > 0) {
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      if (line.startsWith('date')) continue; // 헤더 스킵
+      const comma = line.indexOf(',');
+      if (comma === -1) continue;
+      const day = parseInt(line.slice(0, comma));
+      if (!day) continue;
+      const items = line.slice(comma + 1).split('|').map(s => s.trim()).filter(Boolean);
+      if (items.length) {
         const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         parsedMenu[dateStr] = items;
       }
     }
 
+    if (!Object.keys(parsedMenu).length) { showToast('파싱 실패: 형식을 확인하세요 (3,밥|국|반찬)'); return; }
+
     renderDayGrid();
     document.getElementById('step2').style.display = '';
     document.getElementById('step3').style.display = 'none';
-    showToast(`${Object.keys(parsedMenu).length}일치 메뉴를 분석했어요 ✓`);
+    showToast(`${Object.keys(parsedMenu).length}일치 메뉴를 불러왔어요 ✓`);
   };
 
   function renderDayGrid() {
