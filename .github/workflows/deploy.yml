@@ -21,11 +21,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Inject Firebase config
+        env:
+          FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
         run: |
-          sed -i "s|__FIREBASE_API_KEY__|${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}|g" web/index.html
-          sed -i "s|__FIREBASE_PROJECT_ID__|${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}|g" web/index.html
-          sed -i "s|__FIREBASE_STORAGE_BUCKET__|${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}|g" web/index.html
-          sed -i "s|__FIREBASE_APP_ID__|${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}|g" web/index.html
+          python3 - <<'EOF'
+          import os, pathlib
+          f = pathlib.Path('web/index.html')
+          html = f.read_text()
+          html = html.replace('__FIREBASE_API_KEY__',      os.environ['FIREBASE_API_KEY'])
+          html = html.replace('__FIREBASE_PROJECT_ID__',   os.environ['FIREBASE_PROJECT_ID'])
+          html = html.replace('__FIREBASE_STORAGE_BUCKET__', os.environ['FIREBASE_STORAGE_BUCKET'])
+          html = html.replace('__FIREBASE_APP_ID__',       os.environ['FIREBASE_APP_ID'])
+          f.write_text(html)
+          EOF
 
       - uses: actions/configure-pages@v4
 
