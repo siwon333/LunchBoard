@@ -115,23 +115,23 @@
   </div>
 </div>
 
-<!-- 공지 탭 -->
+<!-- 쌉소리 탭 -->
 <div id="tab-notice" style="display:none">
   <div class="header">
     <h1>오늘의 ???</h1>
     <p id="notice-label"></p>
   </div>
-  <!-- 공지 등록 (누구나) -->
+  <!-- 쌉소리 등록 (누구나) -->
   <div class="card">
-    <div class="step-label">공지 등록</div>
+    <div class="step-label">등록</div>
     <label>내용</label>
-    <textarea id="notice-text-input" style="min-height:100px" placeholder="공지 내용을 입력하세요"></textarea>
+    <textarea id="notice-text-input" style="min-height:100px" placeholder="내용을 입력하세요"></textarea>
     <label>이미지 (선택)</label>
     <input type="file" id="notice-img-input" accept="image/*" onchange="previewNoticeImg(this)" />
     <img id="notice-img-preview" alt="미리보기" />
     <div class="upload-progress" id="upload-progress"><div class="upload-progress-fill" id="upload-progress-fill" style="width:0%"></div></div>
     <br/>
-    <button class="btn btn-primary" id="notice-post-btn" onclick="postNotice()">공지 등록</button>
+    <button class="btn btn-primary" id="notice-post-btn" onclick="postNotice()">등록</button>
   </div>
   <div id="notice-list"><div class="loading">불러오는 중...</div></div>
 </div>
@@ -152,7 +152,7 @@
     <div class="admin-header">
       <div>
         <h1 style="font-size:20px;font-weight:700">관리자</h1>
-        <p style="font-size:12px;color:#9ca3af;margin-top:2px">급식 메뉴 및 공지를 등록해요</p>
+        <p style="font-size:12px;color:#9ca3af;margin-top:2px">급식 메뉴를 등록해요</p>
       </div>
       <button class="btn-lock" onclick="lockAdmin()">잠금</button>
     </div>
@@ -247,18 +247,18 @@
     }
   });
 
-  // 공지 실시간 구독
+  // 쌉소리 실시간 구독
   let isAdmin = false;
   onSnapshot(query(collection(db, 'notices'), orderBy('createdAt', 'desc')), (snap) => {
     const list = document.getElementById('notice-list');
     if (snap.empty) {
-      list.innerHTML = `<div class="empty" style="padding-top:48px"><div class="emoji">📢</div><p>등록된 공지가 없어요</p></div>`;
+      list.innerHTML = `<div class="empty" style="padding-top:48px"><div class="emoji">📢</div><p>등록된 쌉소리가 없어요</p></div>`;
       return;
     }
     list.innerHTML = snap.docs.map(d => {
       const n = d.data();
       const deleteBtn = `<button class="notice-delete" onclick="deleteNotice('${d.id}')" style="display:${isAdmin?'':'none'}">삭제</button>`;
-      const img = n.imageUrl ? `<img src="${n.imageUrl}" alt="공지 이미지" loading="lazy" />` : '';
+      const img = n.imageUrl ? `<img src="${n.imageUrl}" alt="쌉소리 이미지" loading="lazy" />` : '';
       const text = n.text ? `<div class="notice-text">${n.text.replace(/</g,'&lt;')}</div>` : '';
       return `<div class="notice-card" data-id="${d.id}">
         ${img}
@@ -303,7 +303,7 @@
       isAdmin = true;
       document.getElementById('pin-view').style.display = 'none';
       document.getElementById('admin-view').style.display = '';
-      // 공지 삭제 버튼 표시
+      // 쌉소리 삭제 버튼 표시
       document.querySelectorAll('.notice-delete').forEach(b => b.style.display = '');
     } else {
       showToast('PIN이 틀렸습니다');
@@ -318,7 +318,7 @@
     showMeal();
   };
 
-  // ─── 공지 등록 ─────────────────────────────────────────────
+  // ─── 쌉소리 등록 ─────────────────────────────────────────────
   window.previewNoticeImg = (input) => {
     const file = input.files[0];
     const preview = document.getElementById('notice-img-preview');
@@ -367,11 +367,11 @@
       document.getElementById('notice-text-input').value = '';
       fileInput.value = '';
       document.getElementById('notice-img-preview').style.display = 'none';
-      showToast('공지가 등록됐어요 ✓');
+      showToast('쌉소리가 등록됐어요 ✓');
     } catch (e) {
       showToast('등록에 실패했어요: ' + e.message);
     } finally {
-      btn.disabled = false; btn.textContent = '공지 등록';
+      btn.disabled = false; btn.textContent = '쌉소리 등록';
     }
   };
 
@@ -379,7 +379,7 @@
     if (!isAdmin) return;
     try {
       await deleteDoc(doc(db, 'notices', id));
-      showToast('공지를 삭제했어요');
+      showToast('쌉소리를 삭제했어요');
     } catch {
       showToast('삭제에 실패했어요');
     }
