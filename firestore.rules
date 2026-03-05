@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── 헬퍼 함수 ─────────────────────────────────────────────
+
+    // 인증된 사용자인지
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // 룸 멤버인지
+    function isRoomMember(roomId) {
+      return isAuth() &&
+        exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+    }
+
+    // 룸 멤버 문서 가져오기
+    function getMember(roomId) {
+      return get(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)).data;
+    }
+
+    // Owner 또는 Admin인지
+    function isAdminOrOwner(roomId) {
+      return isRoomMember(roomId) &&
+        getMember(roomId).role in ['OWNER', 'ADMIN'];
+    }
+
+    // ─── rooms ──────────────────────────────────────────────────
+    match /rooms/{roomId} {
+      // 룸 조회: 멤버만
+      allow read: if isRoomMember(roomId);
+      // 룸 생성: 인증된 사용자 (ownerId == 본인)
+      allow create: if isAuth() && request.resource.data.ownerId == request.auth.uid;
+      // 룸 수정: Owner/Admin만
+      allow update: if isAdminOrOwner(roomId);
+      // 룸 삭제: 지원 안 함 (MVP)
+      allow delete: if false;
+
+      // ─── members ────────────────────────────────────────────
+      match /members/{memberId} {
+        allow read: if isRoomMember(roomId);
+        // 가입: 본인만 자기 문서 생성
+        allow create: if isAuth() && memberId == request.auth.uid;
+        // 역할 수정: Owner만
+        allow update: if isAuth() &&
+          get(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)).data.role == 'OWNER';
+        allow delete: if false;
+      }
+
+      // ─── events ─────────────────────────────────────────────
+      match /events/{eventId} {
+        allow read: if isRoomMember(roomId);
+        // 생성: 멤버 누구나
+        allow create: if isRoomMember(roomId) &&
+          request.resource.data.createdBy == request.auth.uid;
+        // 수정/삭제: 작성자 또는 Admin/Owner
+        allow update, delete: if isRoomMember(roomId) &&
+          (resource.data.createdBy == request.auth.uid || isAdminOrOwner(roomId));
+      }
+
+      // ─── presence ────────────────────────────────────────────
+      match /presence/{userId} {
+        allow read: if isRoomMember(roomId);
+        // 본인 상태만 쓰기 가능
+        allow write: if isAuth() && userId == request.auth.uid && isRoomMember(roomId);
+      }
+
+      // ─── notifications ───────────────────────────────────────
+      match /notifications/{notifId} {
+        allow read: if isRoomMember(roomId);
+        // 생성: 멤버 (서비스 레이어에서 직접 호출)
+        allow create: if isRoomMember(roomId);
+        // 읽음 처리 (readBy 업데이트): 멤버
+        allow update: if isRoomMember(roomId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']);
+        allow delete: if false;
+      }
+
+      // ─── auditLogs ───────────────────────────────────────────
+      match /auditLogs/{logId} {
+        // 읽기: Admin/Owner만
+        allow read: if isAdminOrOwner(roomId);
+        // 쓰기: 멤버 (서비스 레이어에서만 호출)
+        allow create: if isRoomMember(roomId);
+        allow update, delete: if false;
+      }
+    }
+  }
+}
