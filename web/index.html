@@ -369,7 +369,7 @@
       document.getElementById('notice-img-preview').style.display = 'none';
       showToast('공지가 등록됐어요 ✓');
     } catch (e) {
-      showToast('등록에 실패했어요: ' + e.message);
+      showToast('공지 등록 실패: ' + e.message);
     } finally {
       btn.disabled = false; btn.textContent = '공지 등록';
     }
@@ -448,8 +448,8 @@
       const dayBtn = document.querySelector(`.day-btn[data-date="${date}"]`);
       if (dayBtn) dayBtn.classList.add('saved');
       showToast(`${koreanDate(date)} 저장됐어요 ✓`);
-    } catch {
-      showToast('저장에 실패했어요');
+    } catch (e) {
+      showToast('저장 실패: ' + e.message);
     } finally {
       btn.disabled = false; btn.textContent = '저장';
     }
@@ -464,19 +464,20 @@
     btn.disabled = true; btn.textContent = `저장 중... (0/${dates.length})`;
     bar.style.display = '';
     fill.style.width = '0%';
-    let done = 0;
+    let done = 0; let failed = 0; let lastErr = '';
     for (const date of dates.sort()) {
       try {
         await setDoc(doc(db, 'mealMenus', date), { date, items: parsedMenu[date] });
         const dayBtn = document.querySelector(`.day-btn[data-date="${date}"]`);
         if (dayBtn) dayBtn.classList.add('saved');
-      } catch { /* skip */ }
-      done++;
-      fill.style.width = `${Math.round(done / dates.length * 100)}%`;
-      btn.textContent = `저장 중... (${done}/${dates.length})`;
+        done++;
+      } catch (e) { failed++; lastErr = e.message; }
+      fill.style.width = `${Math.round((done + failed) / dates.length * 100)}%`;
+      btn.textContent = `저장 중... (${done + failed}/${dates.length})`;
     }
     btn.disabled = false; btn.textContent = '📅 전체 저장 (모든 날짜 한 번에)';
-    showToast(`${dates.length}일치 메뉴를 모두 저장했어요 ✓`);
+    if (failed > 0) showToast(`${failed}일 저장 실패: ${lastErr}`);
+    else showToast(`${done}일치 메뉴를 모두 저장했어요 ✓`);
   };
 
   function showToast(msg) {
