@@ -94,6 +94,25 @@
     #notice-img-preview { width: 100%; border-radius: 12px; margin-top: 10px; display: none; max-height: 200px; object-fit: cover; }
     .upload-progress { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 8px; overflow: hidden; display: none; }
     .upload-progress-fill { height: 100%; background: #0ea5e9; border-radius: 2px; transition: width 0.2s; }
+
+    /* Notice engagement */
+    .notice-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
+    .action-btn { display: inline-flex; align-items: center; gap: 4px; background: #f9fafb; border: 1px solid #e5e7eb; cursor: pointer; font-size: 13px; color: #6b7280; padding: 5px 12px; border-radius: 20px; transition: all 0.15s; }
+    .action-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+    .action-btn.liked { color: #ef4444; border-color: #fca5a5; background: #fff1f2; }
+
+    /* Comments */
+    .comment-section { border-top: 1px solid #f3f4f6; background: #f9fafb; padding: 12px 16px 14px; }
+    .comment-empty { text-align: center; padding: 12px 0 8px; font-size: 13px; color: #9ca3af; }
+    .comment-item { padding: 8px 0; font-size: 13px; color: #1f2937; line-height: 1.5; }
+    .comment-item + .comment-item { border-top: 1px solid #f3f4f6; }
+    .comment-time { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .comment-input-row { display: flex; gap: 8px; margin-top: 10px; }
+    .comment-input-row input[type="text"] { flex: 1; padding: 8px 14px; border: 1px solid #e5e7eb; border-radius: 20px; font-size: 13px; outline: none; background: #fff; width: auto; }
+    .comment-input-row input[type="text"]:focus { border-color: #0ea5e9; }
+    .comment-submit { padding: 8px 14px; border-radius: 20px; background: #0ea5e9; color: #fff; border: none; font-size: 13px; cursor: pointer; white-space: nowrap; font-weight: 500; flex-shrink: 0; }
+    .comment-submit:hover { background: #0284c7; }
+    .comment-delete { font-size: 11px; color: #ef4444; background: none; border: none; cursor: pointer; padding: 2px 4px; float: right; }
   </style>
 </head>
 <body>
@@ -198,7 +217,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-  import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, query, orderBy, serverTimestamp }
+  import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp, arrayUnion, arrayRemove, increment }
     from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
   import { getStorage, ref, uploadBytesResumable, getDownloadURL }
     from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
@@ -215,6 +234,15 @@
   const db = getFirestore(app);
   const storage = getStorage(app);
   const ADMIN_PIN = '1234';
+
+  function getAnonymousId() {
+    let id = localStorage.getItem('lb_uid');
+    if (!id) {
+      id = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      localStorage.setItem('lb_uid', id);
+    }
+    return id;
+  }
 
   function todayStr() {
     const d = new Date();
@@ -249,26 +277,66 @@
 
   // 쌉소리 실시간 구독
   let isAdmin = false;
+  const expandedNotices = new Set();
+  const commentUnsubs = {};
+
+  function renderNoticeCard(d) {
+    const n = d.data();
+    const uid = getAnonymousId();
+    const likedBy = n.likedBy || [];
+    const liked = likedBy.includes(uid);
+    const likeCount = likedBy.length;
+    const commentCount = n.commentCount || 0;
+    const deleteBtn = `<button class="notice-delete" onclick="deleteNotice('${d.id}')" style="display:${isAdmin?'':'none'}">삭제</button>`;
+    const img = n.imageUrl ? `<img src="${n.imageUrl}" alt="쌉소리 이미지" loading="lazy" />` : '';
+    const text = n.text ? `<div class="notice-text">${n.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : '';
+    const likeLabel = likeCount > 0 ? `${liked ? '❤️' : '🤍'} ${likeCount}` : `${liked ? '❤️' : '🤍'} 좋아요`;
+    const commentLabel = commentCount > 0 ? `💬 ${commentCount}개 댓글` : `💬 댓글`;
+    return `<div class="notice-card" data-id="${d.id}">
+      ${img}
+      <div class="notice-body">
+        ${deleteBtn}
+        ${text}
+        <div class="notice-date">${formatTs(n.createdAt)}</div>
+        <div class="notice-actions">
+          <button class="action-btn${liked ? ' liked' : ''}" onclick="toggleLike('${d.id}', ${liked})">${likeLabel}</button>
+          <button class="action-btn" id="comment-btn-${d.id}" onclick="toggleComments('${d.id}')">${commentLabel}</button>
+        </div>
+      </div>
+      <div class="comment-section" id="comments-${d.id}" style="display:none">
+        <div class="comment-list" id="comment-list-${d.id}"></div>
+        <div class="comment-input-row">
+          <input type="text" id="comment-input-${d.id}" placeholder="댓글을 입력하세요..." maxlength="200"
+            onkeydown="if(event.key==='Enter')postComment('${d.id}')" />
+          <button class="comment-submit" onclick="postComment('${d.id}')">등록</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   onSnapshot(query(collection(db, 'notices'), orderBy('createdAt', 'desc')), (snap) => {
     const list = document.getElementById('notice-list');
     if (snap.empty) {
       list.innerHTML = `<div class="empty" style="padding-top:48px"><div class="emoji">📢</div><p>등록된 쌉소리가 없어요</p></div>`;
       return;
     }
-    list.innerHTML = snap.docs.map(d => {
-      const n = d.data();
-      const deleteBtn = `<button class="notice-delete" onclick="deleteNotice('${d.id}')" style="display:${isAdmin?'':'none'}">삭제</button>`;
-      const img = n.imageUrl ? `<img src="${n.imageUrl}" alt="쌉소리 이미지" loading="lazy" />` : '';
-      const text = n.text ? `<div class="notice-text">${n.text.replace(/</g,'&lt;')}</div>` : '';
-      return `<div class="notice-card" data-id="${d.id}">
-        ${img}
-        <div class="notice-body">
-          ${deleteBtn}
-          ${text}
-          <div class="notice-date">${formatTs(n.createdAt)}</div>
-        </div>
-      </div>`;
-    }).join('');
+    list.innerHTML = snap.docs.map(d => renderNoticeCard(d)).join('');
+
+    // 이미 열려있던 댓글 섹션 복원
+    const removedIds = [];
+    expandedNotices.forEach(id => {
+      const section = document.getElementById(`comments-${id}`);
+      if (section) {
+        section.style.display = '';
+        if (!commentUnsubs[id]) loadComments(id);
+      } else {
+        removedIds.push(id);
+      }
+    });
+    removedIds.forEach(id => {
+      expandedNotices.delete(id);
+      if (commentUnsubs[id]) { commentUnsubs[id](); delete commentUnsubs[id]; }
+    });
   });
 
   // 탭 전환
@@ -362,7 +430,7 @@
         progressBar.style.display = 'none';
       }
 
-      await addDoc(collection(db, 'notices'), { text, imageUrl, createdAt: serverTimestamp() });
+      await addDoc(collection(db, 'notices'), { text, imageUrl, createdAt: serverTimestamp(), likedBy: [], commentCount: 0 });
 
       document.getElementById('notice-text-input').value = '';
       fileInput.value = '';
@@ -371,7 +439,7 @@
     } catch (e) {
       showToast('공지 등록 실패: ' + e.message);
     } finally {
-      btn.disabled = false; btn.textContent = '쌉소리 등록';
+      btn.disabled = false; btn.textContent = '등록';
     }
   };
 
@@ -379,9 +447,90 @@
     if (!isAdmin) return;
     try {
       await deleteDoc(doc(db, 'notices', id));
+      if (commentUnsubs[id]) { commentUnsubs[id](); delete commentUnsubs[id]; }
+      expandedNotices.delete(id);
       showToast('쌉소리를 삭제했어요');
     } catch {
       showToast('삭제에 실패했어요');
+    }
+  };
+
+  window.toggleLike = async (noticeId, currentlyLiked) => {
+    const uid = getAnonymousId();
+    try {
+      await updateDoc(doc(db, 'notices', noticeId), {
+        likedBy: currentlyLiked ? arrayRemove(uid) : arrayUnion(uid),
+      });
+    } catch {
+      showToast('오류가 발생했어요');
+    }
+  };
+
+  function loadComments(noticeId) {
+    if (commentUnsubs[noticeId]) return;
+    commentUnsubs[noticeId] = onSnapshot(
+      query(collection(db, 'notices', noticeId, 'comments'), orderBy('createdAt', 'asc')),
+      (snap) => {
+        const listEl = document.getElementById(`comment-list-${noticeId}`);
+        if (!listEl) return;
+        if (snap.empty) {
+          listEl.innerHTML = '<div class="comment-empty">첫 댓글을 남겨보세요</div>';
+        } else {
+          listEl.innerHTML = snap.docs.map(c => {
+            const data = c.data();
+            const delBtn = isAdmin ? `<button class="comment-delete" onclick="deleteComment('${noticeId}','${c.id}')">삭제</button>` : '';
+            return `<div class="comment-item">
+              ${delBtn}
+              <div>${data.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+              <div class="comment-time">${formatTs(data.createdAt)}</div>
+            </div>`;
+          }).join('');
+        }
+      }
+    );
+  }
+
+  window.toggleComments = (noticeId) => {
+    const section = document.getElementById(`comments-${noticeId}`);
+    if (!section) return;
+    if (expandedNotices.has(noticeId)) {
+      expandedNotices.delete(noticeId);
+      section.style.display = 'none';
+      if (commentUnsubs[noticeId]) { commentUnsubs[noticeId](); delete commentUnsubs[noticeId]; }
+    } else {
+      expandedNotices.add(noticeId);
+      section.style.display = '';
+      loadComments(noticeId);
+    }
+  };
+
+  window.postComment = async (noticeId) => {
+    const input = document.getElementById(`comment-input-${noticeId}`);
+    const text = input.value.trim();
+    if (!text) return;
+    input.disabled = true;
+    try {
+      await addDoc(collection(db, 'notices', noticeId, 'comments'), {
+        text,
+        createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, 'notices', noticeId), { commentCount: increment(1) });
+      input.value = '';
+    } catch (e) {
+      showToast('댓글 등록 실패: ' + e.message);
+    } finally {
+      input.disabled = false;
+      input.focus();
+    }
+  };
+
+  window.deleteComment = async (noticeId, commentId) => {
+    if (!isAdmin) return;
+    try {
+      await deleteDoc(doc(db, 'notices', noticeId, 'comments', commentId));
+      await updateDoc(doc(db, 'notices', noticeId), { commentCount: increment(-1) });
+    } catch {
+      showToast('댓글 삭제에 실패했어요');
     }
   };
 
