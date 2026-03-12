@@ -162,8 +162,10 @@
       <div class="emoji">🔒</div>
       <h2>관리자 전용</h2>
       <p>PIN을 입력하세요</p>
-      <input type="password" id="pin-input" maxlength="8" placeholder="PIN" onkeydown="if(event.key==='Enter')checkPin()" />
-      <button class="btn btn-primary" onclick="checkPin()">입장</button>
+      <form onsubmit="checkPin();return false;">
+        <input type="password" id="pin-input" maxlength="8" placeholder="PIN" />
+        <button type="submit" class="btn btn-primary">입장</button>
+      </form>
     </div>
   </div>
 
