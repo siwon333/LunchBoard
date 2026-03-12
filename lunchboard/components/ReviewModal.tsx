@@ -14,6 +14,19 @@ interface Props {
 
 const STAR_LABELS = ['', '별로예요', '그냥저냥', '보통이에요', '맛있어요', '최고예요!'];
 
+function reviewTitle(date: string) {
+  const today = (() => {
+    const d = new Date();
+    const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+    return kst.toISOString().slice(0, 10);
+  })();
+  if (date === today) return '오늘 급식 평가';
+  const [, m, day] = date.split('-');
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const d = new Date(`${date}T00:00:00+09:00`);
+  return `${parseInt(m)}월 ${parseInt(day)}일(${days[d.getDay()]}) 급식 평가`;
+}
+
 export default function ReviewModal({ date, menu, existing, onSave, onClose }: Props) {
   const [stars, setStars] = useState(existing?.stars ?? 0);
   const [comment, setComment] = useState(existing?.comment ?? '');
@@ -36,7 +49,7 @@ export default function ReviewModal({ date, menu, existing, onSave, onClose }: P
       <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-5 pb-8 max-h-[90vh] overflow-y-auto">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-bold text-gray-900">오늘 급식 평가</h2>
+          <h2 className="font-bold text-gray-900">{reviewTitle(date)}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
         </div>
 
