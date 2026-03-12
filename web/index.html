@@ -12,7 +12,24 @@
     .header p { font-size: 12px; color: #9ca3af; margin-top: 2px; }
     .card { margin: 16px; background: #fff; border-radius: 16px; border: 1px solid #f3f4f6; padding: 16px; }
     .card h2 { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 12px; }
-    .menu-item { background: #f9fafb; border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; font-size: 14px; color: #1f2937; }
+    .menu-item { background: #f9fafb; border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; font-size: 14px; color: #1f2937; display: flex; align-items: center; gap: 8px; }
+    .menu-item.favorite { background: #fef9c3; border: 1px solid #fde047; }
+    .fav-btn { background: none; border: none; cursor: pointer; font-size: 17px; flex-shrink: 0; padding: 0; line-height: 1; color: #d1d5db; transition: color 0.15s; }
+    .fav-btn.active { color: #ef4444; }
+    .fav-btn:hover { color: #fca5a5; }
+    .fav-btn.active:hover { color: #dc2626; }
+    .menu-item-name { flex: 1; }
+    .menu-hint { font-size: 11px; color: #9ca3af; text-align: center; margin-top: 8px; }
+    .menu-fav-notice { font-size: 11px; color: #ca8a04; text-align: center; margin-top: 8px; }
+
+    /* 날짜 네비게이션 */
+    .date-nav { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+    .date-nav-btn { background: none; border: 1px solid #e5e7eb; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; font-weight: 700; color: #6b7280; flex-shrink: 0; line-height: 1; }
+    .date-nav-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+    .date-display-btn { flex: 1; background: none; border: none; cursor: pointer; font-size: 12px; color: #9ca3af; text-align: center; padding: 2px 4px; }
+    .date-display-btn:hover { color: #0ea5e9; }
+    .today-back-btn { font-size: 11px; color: #0ea5e9; background: none; border: none; cursor: pointer; padding: 2px 0; margin-top: 2px; }
+    .today-back-btn:hover { text-decoration: underline; }
     .empty { text-align: center; padding: 32px 0; }
     .empty .emoji { font-size: 32px; margin-bottom: 8px; }
     .empty p { font-size: 14px; color: #9ca3af; }
@@ -125,11 +142,18 @@
 <!-- 급식 탭 -->
 <div id="tab-meal">
   <div class="header">
-    <h1>오늘의 급식</h1>
-    <p id="today-label"></p>
+    <h1 id="meal-title">오늘의 급식</h1>
+    <div class="date-nav">
+      <button class="date-nav-btn" onclick="navigateDate(-1)">‹</button>
+      <button class="date-display-btn" id="date-display" onclick="openDatePicker()"></button>
+      <input type="date" id="date-picker" onchange="onDatePickerChange(this.value)"
+        style="position:absolute;width:0;height:0;opacity:0;pointer-events:none" />
+      <button class="date-nav-btn" onclick="navigateDate(1)">›</button>
+    </div>
+    <button class="today-back-btn" id="today-back-btn" onclick="goToToday()" style="display:none">오늘로 돌아가기 →</button>
   </div>
   <div class="card">
-    <h2>오늘의 메뉴</h2>
+    <h2>메뉴</h2>
     <div id="menu-list"><div class="loading">불러오는 중...</div></div>
   </div>
 </div>
@@ -261,21 +285,93 @@
   }
 
   const today = todayStr();
-  document.getElementById('today-label').textContent = koreanDate(today);
   document.getElementById('notice-label').textContent = koreanDate(today);
   document.getElementById('raw-month').value = today.slice(0, 7);
 
-  // 메뉴 실시간 구독
-  onSnapshot(doc(db, 'mealMenus', today), (snap) => {
+  // ─── 개인 즐겨찾기 ───────────────────────────────────────
+  let myFavorites = JSON.parse(localStorage.getItem('lb_favorites') || '[]');
+  let currentItems = [];
+  let menuUnsub = null;
+  let selectedDate = today;
+
+  function koreanDateFull(s) {
+    const days = ['일','월','화','수','목','금','토'];
+    const [y, m, day] = s.split('-');
+    const d = new Date(s + 'T00:00:00');
+    return `${y}년 ${parseInt(m)}월 ${parseInt(day)}일 (${days[d.getDay()]})`;
+  }
+
+  function updateDateDisplay() {
+    document.getElementById('date-display').textContent = koreanDateFull(selectedDate) + ' 📅';
+    document.getElementById('date-picker').value = selectedDate;
+    const isToday = selectedDate === today;
+    document.getElementById('meal-title').textContent = isToday ? '오늘의 급식' : '급식 메뉴';
+    document.getElementById('today-back-btn').style.display = isToday ? 'none' : '';
+  }
+
+  function renderMenuList(items) {
     const list = document.getElementById('menu-list');
-    if (snap.exists() && snap.data().items.length > 0) {
-      list.innerHTML = snap.data().items.map(item =>
-        `<div class="menu-item">${item}</div>`
-      ).join('');
+    if (items.length > 0) {
+      const hasFav = items.some(item => myFavorites.includes(item));
+      const hint = hasFav
+        ? `<p class="menu-fav-notice">♥ 내가 좋아하는 메뉴가 포함돼 있어요!</p>`
+        : `<p class="menu-hint">♡ 눌러 즐겨찾기 · 같은 메뉴가 다시 나오면 자동 표시</p>`;
+      list.innerHTML = items.map(item => {
+        const isFav = myFavorites.includes(item);
+        return `<div class="menu-item${isFav ? ' favorite' : ''}">
+          <button class="fav-btn${isFav ? ' active' : ''}" data-item="${item.replace(/"/g,'&quot;')}"
+            onclick="toggleFavorite(this.dataset.item)" title="${isFav ? '즐겨찾기 해제' : '즐겨찾기 추가'}">${isFav ? '♥' : '♡'}</button>
+          <span class="menu-item-name">${item}</span>
+        </div>`;
+      }).join('') + hint;
     } else {
-      list.innerHTML = `<div class="empty"><div class="emoji">🍱</div><p>오늘 메뉴가 아직 등록되지 않았어요</p></div>`;
+      list.innerHTML = `<div class="empty"><div class="emoji">🍱</div><p>메뉴가 아직 등록되지 않았어요</p></div>`;
     }
-  });
+  }
+
+  window.toggleFavorite = (item) => {
+    const idx = myFavorites.indexOf(item);
+    if (idx >= 0) myFavorites.splice(idx, 1);
+    else myFavorites.push(item);
+    localStorage.setItem('lb_favorites', JSON.stringify(myFavorites));
+    renderMenuList(currentItems);
+  };
+
+  function subscribeMenu(date) {
+    if (menuUnsub) menuUnsub();
+    menuUnsub = onSnapshot(doc(db, 'mealMenus', date), (snap) => {
+      currentItems = (snap.exists() && snap.data().items.length > 0) ? snap.data().items : [];
+      renderMenuList(currentItems);
+    });
+  }
+
+  // 날짜 네비게이션
+  window.navigateDate = (delta) => {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    selectedDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    updateDateDisplay();
+    subscribeMenu(selectedDate);
+  };
+  window.openDatePicker = () => {
+    const picker = document.getElementById('date-picker');
+    try { picker.showPicker?.(); } catch { picker.click(); }
+  };
+  window.onDatePickerChange = (val) => {
+    if (!val) return;
+    selectedDate = val;
+    updateDateDisplay();
+    subscribeMenu(selectedDate);
+  };
+  window.goToToday = () => {
+    selectedDate = today;
+    updateDateDisplay();
+    subscribeMenu(selectedDate);
+  };
+
+  // 초기화
+  updateDateDisplay();
+  subscribeMenu(selectedDate);
 
   // 쌉소리 실시간 구독
   let isAdmin = false;
