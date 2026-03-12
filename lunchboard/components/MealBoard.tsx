@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   MealSchedule, MealMenu, MealReview,
   subscribeMealSchedule, subscribeMealMenu, subscribeMealReviews,
@@ -18,7 +18,6 @@ function todayStr() {
   const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
   return kst.toISOString().slice(0, 10);
 }
-function currentMonth() { return todayStr().slice(0, 7); }
 function koreanDate(s: string) {
   const [y, m, day] = s.split('-');
   const days = ['일', '월', '화', '수', '목', '금', '토'];
@@ -38,6 +37,16 @@ function buildStarCounts(reviews: MealReview[], items: string[]) {
     if (counts[item] !== undefined) counts[item]++;
   }));
   return counts;
+}
+
+// 각 메뉴를 좋아하는 사람들의 닉네임 목록
+function buildFansMap(reviews: MealReview[], items: string[]): Record<string, string[]> {
+  const fans: Record<string, string[]> = {};
+  items.forEach((item) => { fans[item] = []; });
+  reviews.forEach((r) => r.favoriteItems.forEach((item) => {
+    if (fans[item] !== undefined) fans[item].push(r.nickname);
+  }));
+  return fans;
 }
 
 function useNickname() {
@@ -60,8 +69,15 @@ function useNickname() {
 
 export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
   const today = todayStr();
-  const month = currentMonth();
   const { nickname, setNickname, userId } = useNickname();
+
+  // ── 날짜 상태 (오늘 기본값) ──────────────────────────────
+  const [selectedDate, setSelectedDate] = useState(today);
+  const selectedMonth = selectedDate.slice(0, 7);
+  const isToday = selectedDate === today;
+
+  // ── 개인 즐겨찾기 (형광펜) ──────────────────────────────
+  const [myFavorites, setMyFavorites] = useState<string[]>([]);
 
   const [schedule, setSchedule] = useState<MealSchedule | null>(null);
   const [menu, setMenu] = useState<MealMenu | null>(null);
@@ -75,16 +91,58 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
   const [nickEdit, setNickEdit] = useState(false);
   const [nickInput, setNickInput] = useState('');
 
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  // 개인 즐겨찾기 로드
   useEffect(() => {
-    const u1 = subscribeMealSchedule(month, setSchedule);
-    const u2 = subscribeMealMenu(today, setMenu);
-    const u3 = subscribeMealReviews(today, setReviews);
+    try {
+      const saved = localStorage.getItem('meal_favorites');
+      if (saved) setMyFavorites(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, []);
+
+  // 날짜가 바뀌면 해당 날짜 데이터 구독
+  useEffect(() => {
+    setMenu(null);
+    setReviews([]);
+    const u1 = subscribeMealSchedule(selectedMonth, setSchedule);
+    const u2 = subscribeMealMenu(selectedDate, setMenu);
+    const u3 = subscribeMealReviews(selectedDate, setReviews);
     return () => { u1(); u2(); u3(); };
-  }, [today, month]);
+  }, [selectedDate, selectedMonth]);
+
+  // ── 개인 즐겨찾기 토글 ──────────────────────────────────
+  function toggleMyFavorite(item: string) {
+    setMyFavorites((prev) => {
+      const next = prev.includes(item)
+        ? prev.filter((i) => i !== item)
+        : [...prev, item];
+      localStorage.setItem('meal_favorites', JSON.stringify(next));
+      return next;
+    });
+  }
+
+  // ── 날짜 이동 ────────────────────────────────────────────
+  function navigateDate(delta: number) {
+    const d = new Date(`${selectedDate}T00:00:00+09:00`);
+    d.setDate(d.getDate() + delta);
+    setSelectedDate(d.toISOString().slice(0, 10));
+  }
+
+  function openDatePicker() {
+    const input = dateInputRef.current;
+    if (!input) return;
+    try {
+      (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+    } catch {
+      input.click();
+    }
+  }
 
   const myReview = reviews.find((r) => r.userId === userId) ?? null;
   const average = avg(reviews);
   const starCounts = buildStarCounts(reviews, menu?.items ?? []);
+  const fansMap = buildFansMap(reviews, menu?.items ?? []);
   const sortedItems = [...(menu?.items ?? [])].sort(
     (a, b) => (starCounts[b] ?? 0) - (starCounts[a] ?? 0),
   );
@@ -93,16 +151,13 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
   async function handleSaveUrl() {
     const url = urlInput.trim();
     if (!url) return;
-    // 구글 드라이브 공유 링크를 직접 열람 가능한 URL로 변환
     const converted = convertGoogleDriveUrl(url);
-    await savePdfUrl(month, converted);
+    await savePdfUrl(selectedMonth, converted);
     setShowUrlInput(false);
     setUrlInput('');
-    alert(`${month} 식단표 링크가 등록됐어요!`);
+    alert(`${selectedMonth} 식단표 링크가 등록됐어요!`);
   }
 
-  // ── 구글 드라이브 링크 변환 ────────────────────────────────
-  // https://drive.google.com/file/d/FILE_ID/view → 직접 열람 가능한 URL
   function convertGoogleDriveUrl(url: string): string {
     const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
     if (match) {
@@ -114,24 +169,67 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
   // ── 평가 저장 ──────────────────────────────────────────────
   async function handleSaveReview(stars: number, comment: string, favoriteItems: string[]) {
     if (!nickname) { alert('닉네임을 먼저 설정해주세요'); return; }
-    await saveMealReview(today, userId, { userId, nickname, stars, comment, favoriteItems });
+    await saveMealReview(selectedDate, userId, { userId, nickname, stars, comment, favoriteItems });
   }
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-4">
-      {/* ── 헤더 ──────────────────────────────────────────── */}
+      {/* ── 헤더 + 날짜 네비게이션 ───────────────────────── */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        {/* 날짜 이동 바 */}
+        <div className="flex items-center gap-1 mb-3">
+          <button
+            onClick={() => navigateDate(-1)}
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-xl font-bold transition-colors flex-shrink-0"
+            title="이전 날"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={openDatePicker}
+            className="flex-1 text-center text-xs text-gray-400 hover:text-sky-500 font-medium transition-colors flex items-center justify-center gap-1"
+          >
+            {koreanDate(selectedDate)}
+            <span className="opacity-50">📅</span>
+          </button>
+          {/* 숨겨진 날짜 입력 */}
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={selectedDate}
+            onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+            className="sr-only"
+          />
+          <button
+            onClick={() => navigateDate(1)}
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-xl font-bold transition-colors flex-shrink-0"
+            title="다음 날"
+          >
+            ›
+          </button>
+        </div>
+
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">🍱 오늘의 급식</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{koreanDate(today)}</p>
+            <h1 className="text-xl font-bold text-gray-900">
+              {isToday ? '🍱 오늘의 급식' : '🍱 급식 메뉴'}
+            </h1>
+            {!isToday && (
+              <button
+                onClick={() => setSelectedDate(today)}
+                className="text-xs text-sky-500 hover:text-sky-700 font-medium mt-0.5"
+              >
+                오늘로 돌아가기 →
+              </button>
+            )}
           </div>
           {schedule && (
             <button
               onClick={() => setShowPdf(true)}
               className="text-xs font-semibold text-sky-600 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl transition-colors"
             >
-              📄 {month} 식단표
+              📄 {selectedMonth} 식단표
             </button>
           )}
         </div>
@@ -148,7 +246,7 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
       {!nickname || nickEdit ? (
         <div className="bg-white rounded-2xl p-4 border border-amber-200 shadow-sm">
           <p className="text-sm font-semibold text-gray-700 mb-2">
-            {nickEdit ? '닉네임 변경' : '닉네임을 설정해야 평가할 수 있어요'}
+            {nickEdit ? '닉네임 변경' : '닉네임을 설정하면 평가와 댓글에 이름이 표시돼요'}
           </p>
           <div className="flex gap-2">
             <input
@@ -186,7 +284,12 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
       {/* ── 오늘 메뉴 ─────────────────────────────────────── */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-gray-800 text-sm">오늘의 메뉴</h2>
+          <div>
+            <h2 className="font-bold text-gray-800 text-sm">메뉴</h2>
+            {myFavorites.some((f) => sortedItems.includes(f)) && (
+              <p className="text-xs text-yellow-600 mt-0.5">♥ 내가 좋아하는 메뉴가 포함돼 있어요!</p>
+            )}
+          </div>
           {isAdmin && (
             <button
               onClick={() => setShowMenuEdit(true)}
@@ -206,10 +309,13 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
                 onToggle={() => {}}
                 readonly
                 starCount={starCounts[item]}
+                highlighted={myFavorites.includes(item)}
+                onHighlight={() => toggleMyFavorite(item)}
+                fans={fansMap[item]}
               />
             ))}
             <p className="text-xs text-gray-400 text-center mt-2">
-              별표가 많을수록 룸메들이 좋아하는 메뉴예요
+              ♡ 눌러 즐겨찾기 · 다음에 같은 메뉴가 나와도 자동으로 표시돼요
             </p>
           </>
         ) : (
@@ -256,7 +362,7 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
               onClick={() => { setUrlInput(schedule?.pdfUrl ?? ''); setShowUrlInput(true); }}
               className="w-full bg-gray-50 border border-gray-200 hover:border-sky-300 hover:bg-sky-50 rounded-xl py-3 text-sm font-semibold text-gray-600 transition-colors"
             >
-              🔗 {month} 식단표 링크 {schedule ? '변경' : '등록'}
+              🔗 {selectedMonth} 식단표 링크 {schedule ? '변경' : '등록'}
             </button>
           )}
 
@@ -274,7 +380,7 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
         }}
         className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-4 rounded-2xl text-sm shadow-sm transition-colors"
       >
-        {myReview ? '⭐ 내 평가 수정하기' : '⭐ 오늘 급식 평가하기'}
+        {myReview ? '⭐ 내 평가 수정하기' : '⭐ 이 날 급식 평가하기'}
       </button>
 
       {/* ── 리뷰 목록 ─────────────────────────────────────── */}
@@ -306,11 +412,11 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
 
       {/* ── 모달들 ─────────────────────────────────────────── */}
       {showPdf && schedule && (
-        <PdfModal pdfUrl={schedule.pdfUrl} month={month} onClose={() => setShowPdf(false)} />
+        <PdfModal pdfUrl={schedule.pdfUrl} month={selectedMonth} onClose={() => setShowPdf(false)} />
       )}
       {showReview && (
         <ReviewModal
-          date={today}
+          date={selectedDate}
           menu={menu}
           existing={myReview}
           onSave={handleSaveReview}
@@ -320,7 +426,7 @@ export default function MealBoard({ isAdmin }: { isAdmin: boolean }) {
       {showMenuEdit && (
         <MenuEditModal
           initialItems={menu?.items ?? []}
-          onSave={(items) => saveMealMenu(today, items)}
+          onSave={(items) => saveMealMenu(selectedDate, items)}
           onClose={() => setShowMenuEdit(false)}
         />
       )}
