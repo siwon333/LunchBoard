@@ -156,6 +156,25 @@
     .share-copy-btn { font-size: 12px; padding: 8px 14px; background: #0ea5e9; color: #fff; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap; font-weight: 500; }
     .schedule-friend-msg { padding: 0 16px 12px; font-size: 12px; color: #9ca3af; }
   </style>
+  <style>
+.admin-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-link {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+}
+
+.github-icon {
+  width: 20px;
+  filter: grayscale(100%) opacity(60%);
+}
+</style>
 </head>
 <body>
 
@@ -289,7 +308,9 @@
 <!-- 관리자 진입 (하단 숨김 링크) -->
 <div id="main-footer" class="admin-footer">
   <button class="admin-link" onclick="showAdmin()">관리자</button>
-  <a href="https://github.com/siwon333/LunchBoard" target="_blank"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/github.svg" width="24" alt="GitHub"></a>
+  <a href="https://github.com/siwon333/LunchBoard" target="_blank">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/github.svg" class="github-icon" alt="GitHub">
+  </a>
 </div>
 
 <div class="toast" id="toast"></div>
