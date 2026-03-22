@@ -130,6 +130,31 @@
     .comment-submit { padding: 8px 14px; border-radius: 20px; background: #0ea5e9; color: #fff; border: none; font-size: 13px; cursor: pointer; white-space: nowrap; font-weight: 500; flex-shrink: 0; }
     .comment-submit:hover { background: #0284c7; }
     .comment-delete { font-size: 11px; color: #ef4444; background: none; border: none; cursor: pointer; padding: 2px 4px; float: right; }
+
+    /* 시간표 */
+    .schedule-link-btn { font-size: 11px; color: #9ca3af; background: none; border: none; cursor: pointer; padding: 0; margin-top: 2px; }
+    .schedule-link-btn:hover { color: #0ea5e9; text-decoration: underline; }
+    .schedule-header { background: #fff; padding: 16px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; gap: 10px; }
+    .back-btn { background: none; border: 1px solid #e5e7eb; border-radius: 8px; padding: 5px 12px; font-size: 13px; cursor: pointer; color: #6b7280; flex-shrink: 0; }
+    .back-btn:hover { background: #f3f4f6; }
+    .friend-view-badge { font-size: 11px; color: #0ea5e9; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 20px; padding: 2px 10px; }
+    .timetable-wrap { overflow-x: auto; padding: 12px 16px 8px; position: relative; }
+    .time-indicator { position: absolute; left: 16px; right: 16px; height: 2px; background: #ef4444; pointer-events: none; z-index: 5; transition: top 0.5s linear; }
+    .time-indicator::before { content: attr(data-time); position: absolute; left: 0; top: 50%; transform: translate(-100%, -50%); background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 8px; white-space: nowrap; margin-left: -2px; }
+    .timetable { width: 100%; border-collapse: collapse; }
+    .timetable th { background: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; text-align: center; border: 1px solid #e5e7eb; }
+    .timetable td { border: 1px solid #e5e7eb; vertical-align: middle; }
+    .timetable .period-cell { background: #f9fafb; font-size: 11px; color: #9ca3af; text-align: center; font-weight: 600; padding: 6px 4px; white-space: nowrap; }
+    .timetable .subject-cell { text-align: center; font-size: 12px; font-weight: 600; height: 44px; padding: 3px; }
+    .timetable .subject-cell.editable { cursor: pointer; }
+    .timetable .subject-cell.editable:hover { filter: brightness(0.94); }
+    .timetable .subject-cell:not(.has-value) { color: #d1d5db; font-weight: 400; }
+    .timetable .subject-cell .subj-label { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 6px; padding: 2px 4px; font-size: 12px; font-weight: 600; }
+    .timetable .subject-cell input { width: 100%; border: none; outline: none; background: #eff6ff; text-align: center; font-size: 12px; padding: 2px; font-family: inherit; height: 100%; border-radius: 6px; }
+    .schedule-share-area { padding: 8px 16px 16px; display: flex; gap: 8px; }
+    .share-url-input { flex: 1; font-size: 12px; color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; cursor: text; min-width: 0; }
+    .share-copy-btn { font-size: 12px; padding: 8px 14px; background: #0ea5e9; color: #fff; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap; font-weight: 500; }
+    .schedule-friend-msg { padding: 0 16px 12px; font-size: 12px; color: #9ca3af; }
   </style>
 </head>
 <body>
@@ -143,6 +168,7 @@
 <div id="tab-meal">
   <div class="header">
     <h1 id="meal-title">오늘의 급식</h1>
+    <button class="schedule-link-btn" onclick="showSchedule()">시간표</button>
     <div class="date-nav">
       <button class="date-nav-btn" onclick="navigateDate(-1)">‹</button>
       <button class="date-display-btn" id="date-display" onclick="openDatePicker()"></button>
@@ -232,6 +258,32 @@
       <button class="btn btn-primary" id="save-btn" onclick="saveOne()">저장</button>
     </div>
   </div>
+</div>
+
+<!-- 시간표 탭 -->
+<div id="tab-schedule" style="display:none">
+  <div class="schedule-header">
+    <button class="back-btn" onclick="hideSchedule()">← 돌아가기</button>
+    <span id="schedule-title" style="font-size:16px;font-weight:700">내 시간표</span>
+    <span id="friend-view-badge" class="friend-view-badge" style="display:none">친구 시간표</span>
+  </div>
+  <div class="timetable-wrap">
+    <div id="time-indicator" class="time-indicator" style="display:none" data-time=""></div>
+    <table class="timetable">
+      <thead>
+        <tr>
+          <th style="width:40px"></th>
+          <th>월</th><th>화</th><th>수</th><th>목</th><th>금</th>
+        </tr>
+      </thead>
+      <tbody id="timetable-body"></tbody>
+    </table>
+  </div>
+  <div id="schedule-share-area" class="schedule-share-area">
+    <input class="share-url-input" id="share-url" readonly onclick="this.select()" placeholder="공유 링크" />
+    <button class="share-copy-btn" onclick="copyShareLink()">링크 복사</button>
+  </div>
+  <p id="schedule-friend-msg" class="schedule-friend-msg" style="display:none">읽기 전용입니다. 내 시간표를 보려면 링크 없이 접속하세요.</p>
 </div>
 
 <!-- 관리자 진입 (하단 숨김 링크) -->
@@ -726,6 +778,209 @@
     if (failed > 0) showToast(`${failed}일 저장 실패: ${lastErr}`);
     else showToast(`${done}일치 메뉴를 모두 저장했어요 ✓`);
   };
+
+  // ─── 시간표 ────────────────────────────────────────────
+  const TIMETABLE_PERIODS = 7;
+  const TIMETABLE_DAYS = 5;
+  // 교시별 시작·끝 시각 (분 단위, 자정 기준) — 실제 시정표 기준
+  const PERIOD_MINUTES = [
+    [9*60+10,  9*60+55],    // 1교시  09:10~09:55
+    [10*60+5,  10*60+50],   // 2교시  10:05~10:50
+    [11*60,    11*60+45],   // 3교시  11:00~11:45
+    [11*60+55, 12*60+40],   // 4교시  11:55~12:40
+    [13*60+20, 14*60+5],    // 5교시  13:20~14:05
+    [14*60+15, 15*60],      // 6교시  14:15~15:00
+    [15*60+10, 15*60+55],   // 7교시  15:10~15:55
+    [16*60+5,  16*60+50],   // 8교시  16:05~16:50
+  ];
+  let scheduleData = {};
+  let isViewingFriend = false;
+  let scheduleUnsub = null;
+  let timeIndicatorTimer = null;
+
+  function updateTimeIndicator() {
+    const indicator = document.getElementById('time-indicator');
+    const tbody = document.getElementById('timetable-body');
+    if (!indicator || !tbody) return;
+
+    const now = new Date();
+    const hm = now.getHours() * 60 + now.getMinutes();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    const [firstStart] = PERIOD_MINUTES[0];
+    const [, lastEnd] = PERIOD_MINUTES[PERIOD_MINUTES.length - 1];
+
+    if (hm < firstStart || hm > lastEnd) {
+      indicator.style.display = 'none';
+      return;
+    }
+
+    const rows = tbody.querySelectorAll('tr');
+    const table = tbody.closest('table');
+    const thead = table ? table.querySelector('thead') : null;
+    const theadH = thead ? thead.offsetHeight : 0;
+
+    let topPx = null;
+    for (let i = 0; i < PERIOD_MINUTES.length; i++) {
+      const [start, end] = PERIOD_MINUTES[i];
+      const row = rows[i];
+      if (!row) break;
+      const rowTop = theadH + row.offsetTop;
+      const rowH = row.offsetHeight;
+
+      if (hm >= start && hm <= end) {
+        topPx = rowTop + ((hm - start) / (end - start)) * rowH;
+        break;
+      } else if (i < PERIOD_MINUTES.length - 1 && hm > end && hm < PERIOD_MINUTES[i + 1][0]) {
+        const nextRow = rows[i + 1];
+        const nextTop = nextRow ? theadH + nextRow.offsetTop : rowTop + rowH;
+        topPx = (rowTop + rowH) + ((hm - end) / (PERIOD_MINUTES[i + 1][0] - end)) * (nextTop - rowTop - rowH);
+        break;
+      }
+    }
+
+    if (topPx !== null) {
+      indicator.style.display = '';
+      indicator.style.top = topPx + 'px';
+      indicator.setAttribute('data-time', timeStr);
+    } else {
+      indicator.style.display = 'none';
+    }
+  }
+
+  function renderTimetable(data, editable) {
+    const tbody = document.getElementById('timetable-body');
+    tbody.innerHTML = '';
+    for (let p = 0; p < TIMETABLE_PERIODS; p++) {
+      const tr = document.createElement('tr');
+      const periodTd = document.createElement('td');
+      periodTd.className = 'period-cell';
+      periodTd.textContent = `${p + 1}교시`;
+      tr.appendChild(periodTd);
+      for (let d = 0; d < TIMETABLE_DAYS; d++) {
+        const key = `d${d}p${p}`;
+        const val = data[key] || '';
+        const td = document.createElement('td');
+        td.className = 'subject-cell' + (editable ? ' editable' : '') + (val ? ' has-value' : '');
+        td.dataset.key = key;
+        td.textContent = val || (editable ? '·' : '');
+        if (editable) td.addEventListener('click', () => startEditCell(td, key));
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+  }
+
+  function startEditCell(td, key) {
+    if (isViewingFriend) return;
+    const currentVal = scheduleData[key] || '';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentVal;
+    input.maxLength = 10;
+    td.innerHTML = '';
+    td.appendChild(input);
+    input.focus();
+    input.select();
+
+    const commit = async () => {
+      const newVal = input.value.trim();
+      if (newVal !== currentVal) {
+        if (newVal) scheduleData[key] = newVal;
+        else delete scheduleData[key];
+        await saveScheduleToFirestore();
+      }
+      td.className = 'subject-cell editable' + (newVal ? ' has-value' : '');
+      td.textContent = newVal || '·';
+      td.addEventListener('click', () => startEditCell(td, key));
+    };
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Escape') {
+        input.removeEventListener('blur', commit);
+        td.textContent = currentVal || '·';
+        td.addEventListener('click', () => startEditCell(td, key));
+      }
+    });
+  }
+
+  async function saveScheduleToFirestore() {
+    const uid = getAnonymousId();
+    try {
+      await setDoc(doc(db, 'schedules', uid), { grid: scheduleData, updatedAt: serverTimestamp() });
+    } catch (e) {
+      showToast('저장 실패: ' + e.message);
+    }
+  }
+
+  function subscribeSchedule(uid, editable) {
+    if (scheduleUnsub) { scheduleUnsub(); scheduleUnsub = null; }
+    scheduleUnsub = onSnapshot(doc(db, 'schedules', uid), (snap) => {
+      scheduleData = (snap.exists() && snap.data().grid) ? snap.data().grid : {};
+      renderTimetable(scheduleData, editable);
+      updateTimeIndicator(); // 데이터 갱신 후 선 위치 재계산
+    });
+  }
+
+  window.showSchedule = () => {
+    const params = new URLSearchParams(window.location.search);
+    const friendUid = params.get('friend');
+    const myUid = getAnonymousId();
+
+    document.getElementById('tab-meal').style.display = 'none';
+    document.getElementById('tab-notice').style.display = 'none';
+    document.getElementById('main-tabs').style.display = 'none';
+    document.getElementById('main-footer').style.display = 'none';
+    document.getElementById('tab-schedule').style.display = '';
+
+    if (friendUid && friendUid !== myUid) {
+      isViewingFriend = true;
+      document.getElementById('schedule-title').textContent = '친구 시간표';
+      document.getElementById('friend-view-badge').style.display = '';
+      document.getElementById('schedule-share-area').style.display = 'none';
+      document.getElementById('schedule-friend-msg').style.display = '';
+      subscribeSchedule(friendUid, false);
+    } else {
+      isViewingFriend = false;
+      document.getElementById('schedule-title').textContent = '내 시간표';
+      document.getElementById('friend-view-badge').style.display = 'none';
+      document.getElementById('schedule-share-area').style.display = '';
+      document.getElementById('schedule-friend-msg').style.display = 'none';
+      const shareUrl = `${location.origin}${location.pathname}?friend=${myUid}`;
+      document.getElementById('share-url').value = shareUrl;
+      subscribeSchedule(myUid, true);
+    }
+
+    // 현재 시각 빨간 선 시작
+    clearInterval(timeIndicatorTimer);
+    setTimeout(() => { updateTimeIndicator(); }, 100); // DOM 렌더 후 첫 실행
+    timeIndicatorTimer = setInterval(updateTimeIndicator, 60 * 1000);
+  };
+
+  window.hideSchedule = () => {
+    clearInterval(timeIndicatorTimer);
+    timeIndicatorTimer = null;
+    if (scheduleUnsub) { scheduleUnsub(); scheduleUnsub = null; }
+    document.getElementById('tab-schedule').style.display = 'none';
+    document.getElementById('main-tabs').style.display = '';
+    document.getElementById('tab-meal').style.display = '';
+    document.getElementById('main-footer').style.display = '';
+    isViewingFriend = false;
+  };
+
+  window.copyShareLink = () => {
+    const url = document.getElementById('share-url').value;
+    navigator.clipboard.writeText(url)
+      .then(() => showToast('링크가 복사됐어요 ✓'))
+      .catch(() => { document.getElementById('share-url').select(); showToast('링크를 직접 복사하세요'); });
+  };
+
+  // 친구 링크로 접속 시 자동으로 시간표 열기
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('friend')) setTimeout(showSchedule, 100);
+  })();
 
   function showToast(msg) {
     const t = document.getElementById('toast');
