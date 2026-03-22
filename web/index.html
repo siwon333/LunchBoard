@@ -7,9 +7,11 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9fafb; color: #111827; }
-    .header { background: #fff; padding: 24px 16px 16px; border-bottom: 1px solid #f3f4f6; }
+    .header { background: #fff; padding: 24px 16px 16px; border-bottom: 1px solid #f3f4f6; position: relative; }
     .header h1 { font-size: 20px; font-weight: 700; }
     .header p { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+    .schedule-fab { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 5px; background: #0ea5e9; color: #fff; border: none; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(14,165,233,0.35); }
+    .schedule-fab:hover { background: #0284c7; }
     .card { margin: 16px; background: #fff; border-radius: 16px; border: 1px solid #f3f4f6; padding: 16px; }
     .card h2 { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 12px; }
     .menu-item { background: #f9fafb; border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; font-size: 14px; color: #1f2937; display: flex; align-items: center; gap: 8px; }
@@ -132,8 +134,6 @@
     .comment-delete { font-size: 11px; color: #ef4444; background: none; border: none; cursor: pointer; padding: 2px 4px; float: right; }
 
     /* 시간표 */
-    .schedule-link-btn { font-size: 11px; color: #9ca3af; background: none; border: none; cursor: pointer; padding: 0; margin-top: 2px; }
-    .schedule-link-btn:hover { color: #0ea5e9; text-decoration: underline; }
     .schedule-header { background: #fff; padding: 16px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; gap: 10px; }
     .back-btn { background: none; border: 1px solid #e5e7eb; border-radius: 8px; padding: 5px 12px; font-size: 13px; cursor: pointer; color: #6b7280; flex-shrink: 0; }
     .back-btn:hover { background: #f3f4f6; }
@@ -167,8 +167,8 @@
 <!-- 급식 탭 -->
 <div id="tab-meal">
   <div class="header">
+    <button class="schedule-fab" onclick="showSchedule()">📅 시간표</button>
     <h1 id="meal-title">오늘의 급식</h1>
-    <button class="schedule-link-btn" onclick="showSchedule()">시간표</button>
     <div class="date-nav">
       <button class="date-nav-btn" onclick="navigateDate(-1)">‹</button>
       <button class="date-display-btn" id="date-display" onclick="openDatePicker()"></button>
