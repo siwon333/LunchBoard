@@ -138,17 +138,19 @@
     .back-btn { background: none; border: 1px solid #e5e7eb; border-radius: 8px; padding: 5px 12px; font-size: 13px; cursor: pointer; color: #6b7280; flex-shrink: 0; }
     .back-btn:hover { background: #f3f4f6; }
     .friend-view-badge { font-size: 11px; color: #0ea5e9; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 20px; padding: 2px 10px; }
-    .timetable-wrap { overflow-x: auto; padding: 12px 16px 8px; }
+    .timetable-wrap { overflow-x: auto; padding: 12px 16px 8px; position: relative; }
+    .time-indicator { position: absolute; left: 16px; right: 16px; height: 2px; background: #ef4444; pointer-events: none; z-index: 5; transition: top 0.5s linear; }
+    .time-indicator::before { content: attr(data-time); position: absolute; left: 0; top: 50%; transform: translate(-100%, -50%); background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 8px; white-space: nowrap; margin-left: -2px; }
     .timetable { width: 100%; border-collapse: collapse; }
     .timetable th { background: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; text-align: center; border: 1px solid #e5e7eb; }
     .timetable td { border: 1px solid #e5e7eb; vertical-align: middle; }
     .timetable .period-cell { background: #f9fafb; font-size: 11px; color: #9ca3af; text-align: center; font-weight: 600; padding: 6px 4px; white-space: nowrap; }
-    .timetable .subject-cell { text-align: center; font-size: 13px; height: 44px; padding: 4px; }
+    .timetable .subject-cell { text-align: center; font-size: 12px; font-weight: 600; height: 44px; padding: 3px; }
     .timetable .subject-cell.editable { cursor: pointer; }
-    .timetable .subject-cell.editable:hover { background: #eff6ff; }
-    .timetable .subject-cell.has-value { color: #1f2937; }
-    .timetable .subject-cell:not(.has-value) { color: #d1d5db; }
-    .timetable .subject-cell input { width: 100%; border: none; outline: none; background: #eff6ff; text-align: center; font-size: 13px; padding: 2px; font-family: inherit; height: 100%; }
+    .timetable .subject-cell.editable:hover { filter: brightness(0.94); }
+    .timetable .subject-cell:not(.has-value) { color: #d1d5db; font-weight: 400; }
+    .timetable .subject-cell .subj-label { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 6px; padding: 2px 4px; font-size: 12px; font-weight: 600; }
+    .timetable .subject-cell input { width: 100%; border: none; outline: none; background: #eff6ff; text-align: center; font-size: 12px; padding: 2px; font-family: inherit; height: 100%; border-radius: 6px; }
     .schedule-share-area { padding: 8px 16px 16px; display: flex; gap: 8px; }
     .share-url-input { flex: 1; font-size: 12px; color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; cursor: text; min-width: 0; }
     .share-copy-btn { font-size: 12px; padding: 8px 14px; background: #0ea5e9; color: #fff; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap; font-weight: 500; }
@@ -266,6 +268,7 @@
     <span id="friend-view-badge" class="friend-view-badge" style="display:none">친구 시간표</span>
   </div>
   <div class="timetable-wrap">
+    <div id="time-indicator" class="time-indicator" style="display:none" data-time=""></div>
     <table class="timetable">
       <thead>
         <tr>
@@ -779,9 +782,70 @@
   // ─── 시간표 ────────────────────────────────────────────
   const TIMETABLE_PERIODS = 7;
   const TIMETABLE_DAYS = 5;
+  // 교시별 시작·끝 시각 (분 단위, 자정 기준)
+  const PERIOD_MINUTES = [
+    [9*60,      9*60+45],   // 1교시  09:00~09:45
+    [9*60+55,  10*60+40],   // 2교시  09:55~10:40
+    [10*60+50, 11*60+35],   // 3교시  10:50~11:35
+    [11*60+45, 12*60+30],   // 4교시  11:45~12:30
+    [13*60+20, 14*60+5],    // 5교시  13:20~14:05
+    [14*60+15, 15*60],      // 6교시  14:15~15:00
+    [15*60+10, 15*60+55],   // 7교시  15:10~15:55
+  ];
   let scheduleData = {};
   let isViewingFriend = false;
   let scheduleUnsub = null;
+  let timeIndicatorTimer = null;
+
+  function updateTimeIndicator() {
+    const indicator = document.getElementById('time-indicator');
+    const tbody = document.getElementById('timetable-body');
+    if (!indicator || !tbody) return;
+
+    const now = new Date();
+    const hm = now.getHours() * 60 + now.getMinutes();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    const [firstStart] = PERIOD_MINUTES[0];
+    const [, lastEnd] = PERIOD_MINUTES[PERIOD_MINUTES.length - 1];
+
+    if (hm < firstStart || hm > lastEnd) {
+      indicator.style.display = 'none';
+      return;
+    }
+
+    const rows = tbody.querySelectorAll('tr');
+    const table = tbody.closest('table');
+    const thead = table ? table.querySelector('thead') : null;
+    const theadH = thead ? thead.offsetHeight : 0;
+
+    let topPx = null;
+    for (let i = 0; i < PERIOD_MINUTES.length; i++) {
+      const [start, end] = PERIOD_MINUTES[i];
+      const row = rows[i];
+      if (!row) break;
+      const rowTop = theadH + row.offsetTop;
+      const rowH = row.offsetHeight;
+
+      if (hm >= start && hm <= end) {
+        topPx = rowTop + ((hm - start) / (end - start)) * rowH;
+        break;
+      } else if (i < PERIOD_MINUTES.length - 1 && hm > end && hm < PERIOD_MINUTES[i + 1][0]) {
+        const nextRow = rows[i + 1];
+        const nextTop = nextRow ? theadH + nextRow.offsetTop : rowTop + rowH;
+        topPx = (rowTop + rowH) + ((hm - end) / (PERIOD_MINUTES[i + 1][0] - end)) * (nextTop - rowTop - rowH);
+        break;
+      }
+    }
+
+    if (topPx !== null) {
+      indicator.style.display = '';
+      indicator.style.top = topPx + 'px';
+      indicator.setAttribute('data-time', timeStr);
+    } else {
+      indicator.style.display = 'none';
+    }
+  }
 
   function renderTimetable(data, editable) {
     const tbody = document.getElementById('timetable-body');
@@ -854,6 +918,7 @@
     scheduleUnsub = onSnapshot(doc(db, 'schedules', uid), (snap) => {
       scheduleData = (snap.exists() && snap.data().grid) ? snap.data().grid : {};
       renderTimetable(scheduleData, editable);
+      updateTimeIndicator(); // 데이터 갱신 후 선 위치 재계산
     });
   }
 
@@ -885,9 +950,16 @@
       document.getElementById('share-url').value = shareUrl;
       subscribeSchedule(myUid, true);
     }
+
+    // 현재 시각 빨간 선 시작
+    clearInterval(timeIndicatorTimer);
+    setTimeout(() => { updateTimeIndicator(); }, 100); // DOM 렌더 후 첫 실행
+    timeIndicatorTimer = setInterval(updateTimeIndicator, 60 * 1000);
   };
 
   window.hideSchedule = () => {
+    clearInterval(timeIndicatorTimer);
+    timeIndicatorTimer = null;
     if (scheduleUnsub) { scheduleUnsub(); scheduleUnsub = null; }
     document.getElementById('tab-schedule').style.display = 'none';
     document.getElementById('main-tabs').style.display = '';
