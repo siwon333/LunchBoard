@@ -143,6 +143,7 @@
     .time-indicator::before { content: attr(data-time); position: absolute; left: 0; top: 50%; transform: translate(-100%, -50%); background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 8px; white-space: nowrap; margin-left: -2px; }
     .timetable { width: 100%; border-collapse: collapse; }
     .timetable th { background: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; text-align: center; border: 1px solid #e5e7eb; }
+    .timetable th.today-th { background: #0ea5e9; color: #fff; border-color: #0284c7; }
     .timetable td { border: 1px solid #e5e7eb; vertical-align: middle; }
     .timetable .period-cell { background: #f9fafb; font-size: 11px; color: #9ca3af; text-align: center; font-weight: 600; padding: 6px 4px; white-space: nowrap; line-height: 1.6; }
     .timetable .period-time { display: block; font-size: 9px; font-weight: 400; color: #c4c9d4; margin-top: 1px; }
@@ -855,6 +856,13 @@
   };
 
   function renderTimetable() {
+    // 오늘 요일 헤더 강조 (월=0 ... 금=4, 주말은 해당 없음)
+    const todayCol = new Date().getDay() - 1; // Mon=0, Fri=4
+    const ths = document.querySelectorAll('.timetable thead th');
+    ths.forEach((th, i) => {
+      th.classList.toggle('today-th', i > 0 && i - 1 === todayCol);
+    });
+
     const tbody = document.getElementById('timetable-body');
     tbody.innerHTML = '';
     for (let p = 0; p < TIMETABLE_PERIODS; p++) {
