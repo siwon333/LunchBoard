@@ -143,8 +143,12 @@
     .time-indicator::before { content: attr(data-time); position: absolute; left: 0; top: 50%; transform: translate(-100%, -50%); background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 8px; white-space: nowrap; margin-left: -2px; }
     .timetable { width: 100%; border-collapse: collapse; }
     .timetable th { background: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; text-align: center; border: 1px solid #e5e7eb; }
+    .timetable th.today-th { background: #0ea5e9; color: #fff; border-color: #0284c7; }
+    .timetable td.today-col { border-left-color: #7dd3fc; border-right-color: #7dd3fc; }
+    .timetable td.today-col:not(.grade-1):not(.grade-2):not(.grade-3) { background: #f0f9ff; }
     .timetable td { border: 1px solid #e5e7eb; vertical-align: middle; }
-    .timetable .period-cell { background: #f9fafb; font-size: 11px; color: #9ca3af; text-align: center; font-weight: 600; padding: 6px 4px; white-space: nowrap; }
+    .timetable .period-cell { background: #f9fafb; font-size: 11px; color: #9ca3af; text-align: center; font-weight: 600; padding: 6px 4px; white-space: nowrap; line-height: 1.6; }
+    .timetable .period-time { display: block; font-size: 9px; font-weight: 400; color: #c4c9d4; margin-top: 1px; }
     .timetable .subject-cell { text-align: center; font-size: 12px; font-weight: 600; height: 44px; padding: 3px; }
     .timetable .subject-cell.editable { cursor: pointer; }
     .timetable .subject-cell.editable:hover { filter: brightness(0.94); }
@@ -291,7 +295,7 @@
     <table class="timetable">
       <thead>
         <tr>
-          <th style="width:40px"></th>
+          <th style="width:54px"></th>
           <th>월</th><th>화</th><th>수</th><th>목</th><th>금</th>
         </tr>
       </thead>
@@ -878,6 +882,13 @@
   };
 
   function renderTimetable() {
+    // 오늘 요일 헤더 강조 (월=0 ... 금=4, 주말은 해당 없음)
+    const todayCol = new Date().getDay() - 1; // Mon=0, Fri=4
+    const ths = document.querySelectorAll('.timetable thead th');
+    ths.forEach((th, i) => {
+      th.classList.toggle('today-th', i > 0 && i - 1 === todayCol);
+    });
+
     const tbody = document.getElementById('timetable-body');
     tbody.innerHTML = '';
     for (let p = 0; p < TIMETABLE_PERIODS; p++) {
@@ -885,13 +896,16 @@
       tr.dataset.period = p;
       const periodTd = document.createElement('td');
       periodTd.className = 'period-cell';
-      periodTd.textContent = `${p + 1}교시`;
+      const [ps, pe] = PERIOD_MINUTES[p];
+      const fmt = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+      periodTd.innerHTML = `${p + 1}교시<span class="period-time">${fmt(ps)}~${fmt(pe)}</span>`;
       tr.appendChild(periodTd);
       for (let d = 0; d < TIMETABLE_DAYS; d++) {
         const val = FIXED_SCHEDULE[`d${d}p${p}`] || '';
         const td = document.createElement('td');
         const gradeClass = val === '1학년' ? ' grade-1' : val === '2학년' ? ' grade-2' : val === '3학년' ? ' grade-3' : '';
-        td.className = 'subject-cell' + (val ? ' has-value' : '') + gradeClass;
+        const todayClass = d === todayCol ? ' today-col' : '';
+        td.className = 'subject-cell' + (val ? ' has-value' : '') + gradeClass + todayClass;
         td.textContent = val;
         tr.appendChild(td);
       }
