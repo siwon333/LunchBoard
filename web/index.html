@@ -149,6 +149,7 @@
     .timetable .subject-cell.editable { cursor: pointer; }
     .timetable .subject-cell.editable:hover { filter: brightness(0.94); }
     .timetable .subject-cell:not(.has-value) { color: #d1d5db; font-weight: 400; }
+    .timetable .lunch-row td { background: #fffbeb; border-color: #fde68a; color: #92400e; font-size: 11px; font-weight: 600; text-align: center; padding: 5px 4px; }
     .timetable .subject-cell .subj-label { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 6px; padding: 2px 4px; font-size: 12px; font-weight: 600; }
     .timetable .subject-cell input { width: 100%; border: none; outline: none; background: #eff6ff; text-align: center; font-size: 12px; padding: 2px; font-family: inherit; height: 100%; border-radius: 6px; }
   </style>
@@ -826,7 +827,6 @@
       return;
     }
 
-    const rows = tbody.querySelectorAll('tr');
     const table = tbody.closest('table');
     const thead = table ? table.querySelector('thead') : null;
     const theadH = thead ? thead.offsetHeight : 0;
@@ -834,7 +834,7 @@
     let topPx = null;
     for (let i = 0; i < PERIOD_MINUTES.length; i++) {
       const [start, end] = PERIOD_MINUTES[i];
-      const row = rows[i];
+      const row = tbody.querySelector(`[data-period="${i}"]`);
       if (!row) break;
       const rowTop = theadH + row.offsetTop;
       const rowH = row.offsetHeight;
@@ -843,7 +843,7 @@
         topPx = rowTop + ((hm - start) / (end - start)) * rowH;
         break;
       } else if (i < PERIOD_MINUTES.length - 1 && hm > end && hm < PERIOD_MINUTES[i + 1][0]) {
-        const nextRow = rows[i + 1];
+        const nextRow = tbody.querySelector(`[data-period="${i + 1}"]`);
         const nextTop = nextRow ? theadH + nextRow.offsetTop : rowTop + rowH;
         topPx = (rowTop + rowH) + ((hm - end) / (PERIOD_MINUTES[i + 1][0] - end)) * (nextTop - rowTop - rowH);
         break;
@@ -879,6 +879,7 @@
     tbody.innerHTML = '';
     for (let p = 0; p < TIMETABLE_PERIODS; p++) {
       const tr = document.createElement('tr');
+      tr.dataset.period = p;
       const periodTd = document.createElement('td');
       periodTd.className = 'period-cell';
       periodTd.textContent = `${p + 1}교시`;
@@ -891,6 +892,18 @@
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
+
+      // 4교시(p=3) 다음에 점심 행 삽입
+      if (p === 3) {
+        const lunchTr = document.createElement('tr');
+        lunchTr.className = 'lunch-row';
+        lunchTr.dataset.lunch = 'true';
+        const lunchTd = document.createElement('td');
+        lunchTd.colSpan = 6;
+        lunchTd.textContent = '🍱 점심  12:40 ~ 13:20';
+        lunchTr.appendChild(lunchTd);
+        tbody.appendChild(lunchTr);
+      }
     }
   }
 
