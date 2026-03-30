@@ -149,6 +149,9 @@
     .timetable .subject-cell.editable { cursor: pointer; }
     .timetable .subject-cell.editable:hover { filter: brightness(0.94); }
     .timetable .subject-cell:not(.has-value) { color: #d1d5db; font-weight: 400; }
+    .timetable .subject-cell.grade-1 { background: #dbeafe; color: #1d4ed8; }
+    .timetable .subject-cell.grade-2 { background: #dcfce7; color: #15803d; }
+    .timetable .subject-cell.grade-3 { background: #fce7f3; color: #be185d; }
     .timetable .lunch-row td { background: #fffbeb; border-color: #fde68a; color: #92400e; font-size: 12px; font-weight: 600; text-align: center; padding: 12px 4px; }
     .timetable .subject-cell .subj-label { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 6px; padding: 2px 4px; font-size: 12px; font-weight: 600; }
     .timetable .subject-cell input { width: 100%; border: none; outline: none; background: #eff6ff; text-align: center; font-size: 12px; padding: 2px; font-family: inherit; height: 100%; border-radius: 6px; }
@@ -863,7 +866,8 @@
       for (let d = 0; d < TIMETABLE_DAYS; d++) {
         const val = FIXED_SCHEDULE[`d${d}p${p}`] || '';
         const td = document.createElement('td');
-        td.className = 'subject-cell' + (val ? ' has-value' : '');
+        const gradeClass = val === '1학년' ? ' grade-1' : val === '2학년' ? ' grade-2' : val === '3학년' ? ' grade-3' : '';
+        td.className = 'subject-cell' + (val ? ' has-value' : '') + gradeClass;
         td.textContent = val;
         tr.appendChild(td);
       }
