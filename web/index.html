@@ -144,6 +144,8 @@
     .timetable { width: 100%; border-collapse: collapse; }
     .timetable th { background: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; text-align: center; border: 1px solid #e5e7eb; }
     .timetable th.today-th { background: #0ea5e9; color: #fff; border-color: #0284c7; }
+    .timetable td.today-col { border-left-color: #7dd3fc; border-right-color: #7dd3fc; }
+    .timetable td.today-col:not(.grade-1):not(.grade-2):not(.grade-3) { background: #f0f9ff; }
     .timetable td { border: 1px solid #e5e7eb; vertical-align: middle; }
     .timetable .period-cell { background: #f9fafb; font-size: 11px; color: #9ca3af; text-align: center; font-weight: 600; padding: 6px 4px; white-space: nowrap; line-height: 1.6; }
     .timetable .period-time { display: block; font-size: 9px; font-weight: 400; color: #c4c9d4; margin-top: 1px; }
@@ -878,7 +880,8 @@
         const val = FIXED_SCHEDULE[`d${d}p${p}`] || '';
         const td = document.createElement('td');
         const gradeClass = val === '1학년' ? ' grade-1' : val === '2학년' ? ' grade-2' : val === '3학년' ? ' grade-3' : '';
-        td.className = 'subject-cell' + (val ? ' has-value' : '') + gradeClass;
+        const todayClass = d === todayCol ? ' today-col' : '';
+        td.className = 'subject-cell' + (val ? ' has-value' : '') + gradeClass + todayClass;
         td.textContent = val;
         tr.appendChild(td);
       }
