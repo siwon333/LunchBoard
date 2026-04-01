@@ -862,7 +862,7 @@
     for (let i = 0; i < PERIOD_MINUTES.length; i++) {
       const [start, end] = PERIOD_MINUTES[i];
       const row = getPeriodRow(i);
-      if (!row) break;
+      if (!row) continue;
       const rowTop = theadH + row.offsetTop;
       const rowH = row.offsetHeight;
 
