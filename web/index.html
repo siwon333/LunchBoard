@@ -849,10 +849,18 @@
     const thead = table ? table.querySelector('thead') : null;
     const theadH = thead ? thead.offsetHeight : 0;
 
+    // PERIOD_MINUTES[4]는 점심(lunch)으로, DOM 행은 data-lunch="true"
+    // 5교시 이후(i>=5)는 DOM data-period가 i-1
+    function getPeriodRow(i) {
+      if (i === 4) return tbody.querySelector('[data-lunch="true"]');
+      const domIdx = i >= 5 ? i - 1 : i;
+      return tbody.querySelector(`[data-period="${domIdx}"]`);
+    }
+
     let topPx = null;
     for (let i = 0; i < PERIOD_MINUTES.length; i++) {
       const [start, end] = PERIOD_MINUTES[i];
-      const row = tbody.querySelector(`[data-period="${i}"]`);
+      const row = getPeriodRow(i);
       if (!row) break;
       const rowTop = theadH + row.offsetTop;
       const rowH = row.offsetHeight;
@@ -861,7 +869,7 @@
         topPx = rowTop + ((hm - start) / (end - start)) * rowH;
         break;
       } else if (i < PERIOD_MINUTES.length - 1 && hm > end && hm < PERIOD_MINUTES[i + 1][0]) {
-        const nextRow = tbody.querySelector(`[data-period="${i + 1}"]`);
+        const nextRow = getPeriodRow(i + 1);
         const nextTop = nextRow ? theadH + nextRow.offsetTop : rowTop + rowH;
         topPx = (rowTop + rowH) + ((hm - end) / (PERIOD_MINUTES[i + 1][0] - end)) * (nextTop - rowTop - rowH);
         break;
