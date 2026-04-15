@@ -10,11 +10,10 @@
     .header { background: #fff; padding: 24px 16px 16px; border-bottom: 1px solid #f3f4f6; position: relative; }
     .header h1 { font-size: 20px; font-weight: 700; }
     .header p { font-size: 12px; color: #9ca3af; margin-top: 2px; }
-    .header-fabs { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
-    .schedule-fab { display: flex; align-items: center; gap: 5px; background: #0ea5e9; color: #fff; border: none; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(14,165,233,0.35); }
+    .schedule-fab { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 5px; background: #0ea5e9; color: #fff; border: none; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(14,165,233,0.35); }
     .schedule-fab:hover { background: #0284c7; }
-    .fav-fab { display: flex; align-items: center; gap: 4px; background: #ef4444; color: #fff; border: none; border-radius: 20px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 6px rgba(239,68,68,0.3); }
-    .fav-fab:hover { background: #dc2626; }
+    .fav-view-btn { display: block; width: 100%; text-align: center; background: none; border: none; cursor: pointer; font-size: 12px; color: #d1d5db; padding: 6px 0 2px; }
+    .fav-view-btn:hover { color: #ef4444; }
     .card { margin: 16px; background: #fff; border-radius: 16px; border: 1px solid #f3f4f6; padding: 16px; }
     .card h2 { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 12px; }
     .menu-item { background: #f9fafb; border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; font-size: 14px; color: #1f2937; display: flex; align-items: center; gap: 8px; }
@@ -225,10 +224,7 @@
 <!-- 급식 탭 -->
 <div id="tab-meal">
   <div class="header">
-    <div class="header-fabs">
-      <button class="schedule-fab" onclick="showSchedule()">📅 시간표</button>
-      <button class="fav-fab" onclick="showFavorites()">♥ 즐겨찾기</button>
-    </div>
+    <button class="schedule-fab" onclick="showSchedule()">📅 시간표</button>
     <h1 id="meal-title">오늘의 급식</h1>
     <div class="date-nav">
       <button class="date-nav-btn" onclick="navigateDate(-1)">‹</button>
@@ -453,6 +449,7 @@
       const hint = hasFav
         ? `<p class="menu-fav-notice">♥ 내가 좋아하는 메뉴가 포함돼 있어요!</p>`
         : `<p class="menu-hint">♡ 눌러 즐겨찾기 · 같은 메뉴가 다시 나오면 자동 표시</p>`;
+      const favBtn = `<button class="fav-view-btn" onclick="showFavorites()">♡ 즐겨찾기 모아보기</button>`;
       list.innerHTML = items.map(item => {
         const isFav = myFavorites.includes(item);
         const count = communityFavCounts[item];
@@ -463,7 +460,7 @@
           <span class="menu-item-name">${item}</span>
           ${countBadge}
         </div>`;
-      }).join('') + hint;
+      }).join('') + hint + favBtn;
     } else {
       list.innerHTML = `<div class="empty"><div class="emoji">🍱</div><p>메뉴가 아직 등록되지 않았어요</p></div>`;
     }
