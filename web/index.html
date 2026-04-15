@@ -180,6 +180,16 @@
     .timetable .lunch-row td { background: #fffbeb; border-color: #fde68a; color: #92400e; font-size: 12px; font-weight: 600; text-align: center; padding: 12px 4px; }
     .timetable .subject-cell .subj-label { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 6px; padding: 2px 4px; font-size: 12px; font-weight: 600; }
     .timetable .subject-cell input { width: 100%; border: none; outline: none; background: #eff6ff; text-align: center; font-size: 12px; padding: 2px; font-family: inherit; height: 100%; border-radius: 6px; }
+
+    /* 즐겨찾기 탭 */
+    .fav-count { font-size: 11px; font-weight: 700; color: #ef4444; background: #fff1f2; border: 1px solid #fca5a5; border-radius: 20px; padding: 1px 8px; margin-left: auto; flex-shrink: 0; }
+    .popular-rank { font-size: 13px; width: 24px; text-align: center; flex-shrink: 0; }
+    .popular-count { font-size: 12px; color: #ef4444; font-weight: 600; margin-left: auto; flex-shrink: 0; }
+    .fav-section-title { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .fav-empty { text-align: center; padding: 24px 0; }
+    .fav-empty .emoji { font-size: 28px; margin-bottom: 6px; }
+    .fav-empty p { font-size: 13px; color: #9ca3af; line-height: 1.6; }
+    .menu-item-mine { background: #fef9c3; border: 1px solid #fde047; }
   </style>
   <style>
 .admin-footer {
@@ -207,6 +217,7 @@
 <div class="tabs" id="main-tabs">
   <button class="tab active" onclick="showTab('meal')">오늘의 급식</button>
   <button class="tab" onclick="showTab('notice')">오늘의 ???</button>
+  <button class="tab" onclick="showTab('favorites')">즐겨찾기</button>
 </div>
 
 <!-- 급식 탭 -->
@@ -258,6 +269,22 @@
     <button class="tag-filter-btn" id="filter-btn-siweng" onclick="setTagFilter('시웽')">시웽</button>
   </div>
   <div id="notice-list"><div class="loading">불러오는 중...</div></div>
+</div>
+
+<!-- 즐겨찾기 탭 -->
+<div id="tab-favorites" style="display:none">
+  <div class="header">
+    <h1>즐겨찾기</h1>
+    <p>내가 좋아하는 메뉴와 인기 메뉴를 볼 수 있어요</p>
+  </div>
+  <div class="card">
+    <div class="fav-section-title">내 즐겨찾기</div>
+    <div id="my-fav-list"><div class="loading">불러오는 중...</div></div>
+  </div>
+  <div class="card">
+    <div class="fav-section-title">모두의 인기 메뉴 ❤️</div>
+    <div id="community-fav-list"><div class="loading">불러오는 중...</div></div>
+  </div>
 </div>
 
 <!-- 관리자 탭 -->
@@ -347,7 +374,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-  import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp, arrayUnion, arrayRemove, increment }
+  import { getFirestore, doc, collection, onSnapshot, setDoc, getDoc, addDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp, arrayUnion, arrayRemove, increment }
     from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
   import { getStorage, ref, uploadBytesResumable, getDownloadURL }
     from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
@@ -394,6 +421,7 @@
 
   // ─── 개인 즐겨찾기 ───────────────────────────────────────
   let myFavorites = JSON.parse(localStorage.getItem('lb_favorites') || '[]');
+  let communityFavCounts = {}; // { '메뉴이름': 좋아하는_인원수 }
   let currentItems = [];
   let menuUnsub = null;
   let selectedDate = today;
@@ -422,10 +450,13 @@
         : `<p class="menu-hint">♡ 눌러 즐겨찾기 · 같은 메뉴가 다시 나오면 자동 표시</p>`;
       list.innerHTML = items.map(item => {
         const isFav = myFavorites.includes(item);
+        const count = communityFavCounts[item];
+        const countBadge = count ? `<span class="fav-count">${count}명</span>` : '';
         return `<div class="menu-item${isFav ? ' favorite' : ''}">
           <button class="fav-btn${isFav ? ' active' : ''}" data-item="${item.replace(/"/g,'&quot;')}"
             onclick="toggleFavorite(this.dataset.item)" title="${isFav ? '즐겨찾기 해제' : '즐겨찾기 추가'}">${isFav ? '♥' : '♡'}</button>
           <span class="menu-item-name">${item}</span>
+          ${countBadge}
         </div>`;
       }).join('') + hint;
     } else {
@@ -433,12 +464,18 @@
     }
   }
 
-  window.toggleFavorite = (item) => {
+  window.toggleFavorite = async (item) => {
     const idx = myFavorites.indexOf(item);
     if (idx >= 0) myFavorites.splice(idx, 1);
     else myFavorites.push(item);
     localStorage.setItem('lb_favorites', JSON.stringify(myFavorites));
     renderMenuList(currentItems);
+    renderFavoritesTab();
+    // Firestore에 동기화
+    try {
+      const uid = getAnonymousId();
+      await setDoc(doc(db, 'userFavorites', uid), { items: myFavorites, updatedAt: serverTimestamp() });
+    } catch { /* 로컬은 이미 저장됨 */ }
   };
 
   function subscribeMenu(date) {
@@ -448,6 +485,83 @@
       renderMenuList(currentItems);
     });
   }
+
+  // ─── 즐겨찾기 탭 렌더링 ──────────────────────────────────
+  function renderFavoritesTab() {
+    // 내 즐겨찾기
+    const myEl = document.getElementById('my-fav-list');
+    if (myEl) {
+      if (myFavorites.length === 0) {
+        myEl.innerHTML = `<div class="fav-empty"><div class="emoji">♡</div><p>아직 즐겨찾기한 메뉴가 없어요<br>급식 메뉴에서 ♡를 눌러보세요</p></div>`;
+      } else {
+        myEl.innerHTML = myFavorites.map(item => {
+          const count = communityFavCounts[item] || 0;
+          const escaped = item.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          return `<div class="menu-item favorite">
+            <button class="fav-btn active" onclick="toggleFavorite('${escaped}')" title="즐겨찾기 해제">♥</button>
+            <span class="menu-item-name">${item}</span>
+            ${count > 0 ? `<span class="fav-count">${count}명 좋아해요</span>` : ''}
+          </div>`;
+        }).join('');
+      }
+    }
+
+    // 모두의 인기 메뉴
+    const communityEl = document.getElementById('community-fav-list');
+    if (communityEl) {
+      const sorted = Object.entries(communityFavCounts).sort(([,a],[,b]) => b - a).slice(0, 15);
+      if (sorted.length === 0) {
+        communityEl.innerHTML = `<div class="fav-empty"><div class="emoji">🍽</div><p>아직 즐겨찾기한 메뉴가 없어요</p></div>`;
+      } else {
+        const medals = ['🥇','🥈','🥉'];
+        communityEl.innerHTML = sorted.map(([item, count], idx) => {
+          const isMine = myFavorites.includes(item);
+          const rank = medals[idx] || `${idx + 1}.`;
+          return `<div class="menu-item${isMine ? ' menu-item-mine' : ''}">
+            <span class="popular-rank">${rank}</span>
+            <span class="menu-item-name">${item}</span>
+            <span class="popular-count">❤ ${count}명</span>
+          </div>`;
+        }).join('');
+      }
+    }
+  }
+
+  // Firestore에서 내 즐겨찾기 로드 및 마이그레이션
+  async function initMyFavorites() {
+    const uid = getAnonymousId();
+    try {
+      const snap = await getDoc(doc(db, 'userFavorites', uid));
+      if (snap.exists()) {
+        const fsItems = snap.data().items || [];
+        // localStorage와 Firestore 항목 병합
+        const merged = [...new Set([...myFavorites, ...fsItems])];
+        if (merged.length !== myFavorites.length) {
+          myFavorites = merged;
+          localStorage.setItem('lb_favorites', JSON.stringify(myFavorites));
+          renderMenuList(currentItems);
+          renderFavoritesTab();
+        }
+      } else if (myFavorites.length > 0) {
+        // localStorage에 있던 기존 즐겨찾기를 Firestore로 마이그레이션
+        await setDoc(doc(db, 'userFavorites', uid), { items: myFavorites, updatedAt: serverTimestamp() });
+      }
+    } catch { /* 오프라인이면 무시 */ }
+  }
+
+  // 전체 즐겨찾기 실시간 구독 (인기 메뉴 집계)
+  onSnapshot(collection(db, 'userFavorites'), (snap) => {
+    communityFavCounts = {};
+    snap.docs.forEach(d => {
+      (d.data().items || []).forEach(item => {
+        communityFavCounts[item] = (communityFavCounts[item] || 0) + 1;
+      });
+    });
+    renderMenuList(currentItems);
+    renderFavoritesTab();
+  });
+
+  initMyFavorites();
 
   // 날짜 네비게이션
   window.navigateDate = (delta) => {
@@ -579,9 +693,12 @@
   window.showTab = (tab) => {
     document.getElementById('tab-meal').style.display = tab === 'meal' ? '' : 'none';
     document.getElementById('tab-notice').style.display = tab === 'notice' ? '' : 'none';
+    document.getElementById('tab-favorites').style.display = tab === 'favorites' ? '' : 'none';
+    const tabs = ['meal', 'notice', 'favorites'];
     document.querySelectorAll('#main-tabs .tab').forEach((t, i) => {
-      t.classList.toggle('active', (i === 0) === (tab === 'meal'));
+      t.classList.toggle('active', tabs[i] === tab);
     });
+    if (tab === 'favorites') renderFavoritesTab();
   };
 
   // 관리자 패널 열기/닫기
@@ -589,6 +706,7 @@
     document.getElementById('main-tabs').style.display = 'none';
     document.getElementById('tab-meal').style.display = 'none';
     document.getElementById('tab-notice').style.display = 'none';
+    document.getElementById('tab-favorites').style.display = 'none';
     document.getElementById('main-footer').style.display = 'none';
     document.getElementById('tab-admin').style.display = '';
   };
@@ -597,6 +715,7 @@
     document.getElementById('main-tabs').style.display = '';
     document.getElementById('tab-meal').style.display = '';
     document.getElementById('tab-notice').style.display = 'none';
+    document.getElementById('tab-favorites').style.display = 'none';
     document.getElementById('main-footer').style.display = '';
   };
 
@@ -1019,6 +1138,7 @@
   window.showSchedule = () => {
     document.getElementById('tab-meal').style.display = 'none';
     document.getElementById('tab-notice').style.display = 'none';
+    document.getElementById('tab-favorites').style.display = 'none';
     document.getElementById('main-tabs').style.display = 'none';
     document.getElementById('main-footer').style.display = 'none';
     document.getElementById('tab-schedule').style.display = '';
