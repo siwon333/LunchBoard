@@ -10,8 +10,11 @@
     .header { background: #fff; padding: 24px 16px 16px; border-bottom: 1px solid #f3f4f6; position: relative; }
     .header h1 { font-size: 20px; font-weight: 700; }
     .header p { font-size: 12px; color: #9ca3af; margin-top: 2px; }
-    .schedule-fab { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 5px; background: #0ea5e9; color: #fff; border: none; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(14,165,233,0.35); }
+    .header-fabs { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+    .schedule-fab { display: flex; align-items: center; gap: 5px; background: #0ea5e9; color: #fff; border: none; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(14,165,233,0.35); }
     .schedule-fab:hover { background: #0284c7; }
+    .fav-fab { display: flex; align-items: center; gap: 4px; background: #ef4444; color: #fff; border: none; border-radius: 20px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 6px rgba(239,68,68,0.3); }
+    .fav-fab:hover { background: #dc2626; }
     .card { margin: 16px; background: #fff; border-radius: 16px; border: 1px solid #f3f4f6; padding: 16px; }
     .card h2 { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 12px; }
     .menu-item { background: #f9fafb; border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; font-size: 14px; color: #1f2937; display: flex; align-items: center; gap: 8px; }
@@ -217,13 +220,15 @@
 <div class="tabs" id="main-tabs">
   <button class="tab active" onclick="showTab('meal')">오늘의 급식</button>
   <button class="tab" onclick="showTab('notice')">오늘의 ???</button>
-  <button class="tab" onclick="showTab('favorites')">즐겨찾기</button>
 </div>
 
 <!-- 급식 탭 -->
 <div id="tab-meal">
   <div class="header">
-    <button class="schedule-fab" onclick="showSchedule()">📅 시간표</button>
+    <div class="header-fabs">
+      <button class="schedule-fab" onclick="showSchedule()">📅 시간표</button>
+      <button class="fav-fab" onclick="showFavorites()">♥ 즐겨찾기</button>
+    </div>
     <h1 id="meal-title">오늘의 급식</h1>
     <div class="date-nav">
       <button class="date-nav-btn" onclick="navigateDate(-1)">‹</button>
@@ -271,11 +276,11 @@
   <div id="notice-list"><div class="loading">불러오는 중...</div></div>
 </div>
 
-<!-- 즐겨찾기 탭 -->
+<!-- 즐겨찾기 전체화면 뷰 -->
 <div id="tab-favorites" style="display:none">
-  <div class="header">
-    <h1>즐겨찾기</h1>
-    <p>내가 좋아하는 메뉴와 인기 메뉴를 볼 수 있어요</p>
+  <div class="schedule-header">
+    <button class="back-btn" onclick="hideFavorites()">← 돌아가기</button>
+    <span style="font-size:16px;font-weight:700">즐겨찾기</span>
   </div>
   <div class="card">
     <div class="fav-section-title">내 즐겨찾기</div>
@@ -693,12 +698,26 @@
   window.showTab = (tab) => {
     document.getElementById('tab-meal').style.display = tab === 'meal' ? '' : 'none';
     document.getElementById('tab-notice').style.display = tab === 'notice' ? '' : 'none';
-    document.getElementById('tab-favorites').style.display = tab === 'favorites' ? '' : 'none';
-    const tabs = ['meal', 'notice', 'favorites'];
+    const tabs = ['meal', 'notice'];
     document.querySelectorAll('#main-tabs .tab').forEach((t, i) => {
       t.classList.toggle('active', tabs[i] === tab);
     });
-    if (tab === 'favorites') renderFavoritesTab();
+  };
+
+  // 즐겨찾기 전체화면 열기/닫기
+  window.showFavorites = () => {
+    document.getElementById('main-tabs').style.display = 'none';
+    document.getElementById('tab-meal').style.display = 'none';
+    document.getElementById('tab-notice').style.display = 'none';
+    document.getElementById('main-footer').style.display = 'none';
+    document.getElementById('tab-favorites').style.display = '';
+    renderFavoritesTab();
+  };
+  window.hideFavorites = () => {
+    document.getElementById('tab-favorites').style.display = 'none';
+    document.getElementById('main-tabs').style.display = '';
+    document.getElementById('tab-meal').style.display = '';
+    document.getElementById('main-footer').style.display = '';
   };
 
   // 관리자 패널 열기/닫기
@@ -706,7 +725,6 @@
     document.getElementById('main-tabs').style.display = 'none';
     document.getElementById('tab-meal').style.display = 'none';
     document.getElementById('tab-notice').style.display = 'none';
-    document.getElementById('tab-favorites').style.display = 'none';
     document.getElementById('main-footer').style.display = 'none';
     document.getElementById('tab-admin').style.display = '';
   };
@@ -715,7 +733,6 @@
     document.getElementById('main-tabs').style.display = '';
     document.getElementById('tab-meal').style.display = '';
     document.getElementById('tab-notice').style.display = 'none';
-    document.getElementById('tab-favorites').style.display = 'none';
     document.getElementById('main-footer').style.display = '';
   };
 
@@ -1138,7 +1155,6 @@
   window.showSchedule = () => {
     document.getElementById('tab-meal').style.display = 'none';
     document.getElementById('tab-notice').style.display = 'none';
-    document.getElementById('tab-favorites').style.display = 'none';
     document.getElementById('main-tabs').style.display = 'none';
     document.getElementById('main-footer').style.display = 'none';
     document.getElementById('tab-schedule').style.display = '';
