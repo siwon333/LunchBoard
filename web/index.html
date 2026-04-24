@@ -192,6 +192,24 @@
     .fav-empty .emoji { font-size: 28px; margin-bottom: 6px; }
     .fav-empty p { font-size: 13px; color: #9ca3af; line-height: 1.6; }
     .menu-item-mine { background: #fef9c3; border: 1px solid #fde047; }
+
+    /* D-day 카드 */
+    .dday-card { margin: 16px 16px 0; background: linear-gradient(135deg, #fffbeb, #fff7ed); border-radius: 16px; border: 1px solid #fde68a; padding: 12px 16px; }
+    .dday-card-title { font-size: 11px; font-weight: 700; color: #92400e; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .dday-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+    .dday-item + .dday-item { border-top: 1px solid #fde68a; }
+    .dday-badge { font-size: 12px; font-weight: 800; color: #fff; background: #f59e0b; border-radius: 8px; padding: 2px 8px; flex-shrink: 0; min-width: 48px; text-align: center; }
+    .dday-badge.dday-today { background: #ef4444; }
+    .dday-badge.dday-soon { background: #f97316; }
+    .dday-menu-text { flex: 1; font-size: 13px; font-weight: 600; color: #1f2937; }
+    .dday-date-text { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
+    .dday-remove-btn { background: none; border: none; color: #d1d5db; font-size: 13px; cursor: pointer; padding: 2px; flex-shrink: 0; }
+    .dday-remove-btn:hover { color: #ef4444; }
+    /* 기대 버튼 */
+    .anticipate-btn { background: none; border: none; cursor: pointer; font-size: 15px; flex-shrink: 0; padding: 0; line-height: 1; color: #d1d5db; transition: color 0.15s; }
+    .anticipate-btn.active { color: #f59e0b; }
+    .anticipate-btn:hover { color: #fcd34d; }
+    .anticipate-btn.active:hover { color: #d97706; }
   </style>
   <style>
 .admin-footer {
@@ -234,6 +252,10 @@
       <button class="date-nav-btn" onclick="navigateDate(1)">›</button>
     </div>
     <button class="today-back-btn" id="today-back-btn" onclick="goToToday()" style="display:none">오늘로 돌아가기 →</button>
+  </div>
+  <div id="dday-card" class="dday-card" style="display:none">
+    <div class="dday-card-title">⭐ 기대 중인 급식</div>
+    <div id="dday-list"></div>
   </div>
   <div class="card">
     <h2>메뉴</h2>
@@ -422,6 +444,7 @@
 
   // ─── 개인 즐겨찾기 ───────────────────────────────────────
   let myFavorites = JSON.parse(localStorage.getItem('lb_favorites') || '[]');
+  let myAnticipated = JSON.parse(localStorage.getItem('lb_anticipated') || '[]');
   let communityFavCounts = {}; // { '메뉴이름': 좋아하는_인원수 }
   let currentItems = [];
   let menuUnsub = null;
@@ -448,10 +471,11 @@
       const hasFav = items.some(item => myFavorites.includes(item));
       const hint = hasFav
         ? `<p class="menu-fav-notice">♥ 내가 좋아하는 메뉴가 포함돼 있어요!</p>`
-        : `<p class="menu-hint">♡ 눌러 즐겨찾기 · 같은 메뉴가 다시 나오면 자동 표시</p>`;
+        : `<p class="menu-hint">♡ 즐겨찾기 · ☆ 기대하는 메뉴에 별을 눌러보세요</p>`;
       const favBtn = `<button class="fav-view-btn" onclick="showFavorites()">♡ 즐겨찾기 모아보기</button>`;
       list.innerHTML = items.map(item => {
         const isFav = myFavorites.includes(item);
+        const isAnticipated = myAnticipated.some(a => a.date === selectedDate && a.item === item);
         const count = communityFavCounts[item];
         const countBadge = count ? `<span class="fav-count">${count}명</span>` : '';
         return `<div class="menu-item${isFav ? ' favorite' : ''}">
@@ -459,6 +483,10 @@
             onclick="toggleFavorite(this.dataset.item)" title="${isFav ? '즐겨찾기 해제' : '즐겨찾기 추가'}">${isFav ? '♥' : '♡'}</button>
           <span class="menu-item-name">${item}</span>
           ${countBadge}
+          <button class="anticipate-btn${isAnticipated ? ' active' : ''}"
+            data-item="${item.replace(/"/g,'&quot;')}" data-date="${selectedDate}"
+            onclick="toggleAnticipated(this.dataset.date, this.dataset.item)"
+            title="${isAnticipated ? '기대 해제' : '기대 설정'}">${isAnticipated ? '★' : '☆'}</button>
         </div>`;
       }).join('') + hint + favBtn;
     } else {
@@ -565,6 +593,52 @@
 
   initMyFavorites();
 
+  // ─── 기대 중인 급식 (D-Day) ────────────────────────────
+  function calcDday(dateStr) {
+    const t = new Date(today + 'T00:00:00');
+    const d = new Date(dateStr + 'T00:00:00');
+    return Math.round((d - t) / 86400000);
+  }
+
+  function renderDdayBanner() {
+    const card = document.getElementById('dday-card');
+    const listEl = document.getElementById('dday-list');
+    if (!card || !listEl) return;
+    const upcoming = myAnticipated
+      .map(a => ({ ...a, diff: calcDday(a.date) }))
+      .filter(a => a.diff >= 0)
+      .sort((a, b) => a.diff - b.diff);
+    if (upcoming.length === 0) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    listEl.innerHTML = upcoming.map(({ date, item, diff }) => {
+      const label = diff === 0 ? 'D-Day' : `D-${diff}`;
+      const badgeClass = diff === 0 ? ' dday-today' : diff === 1 ? ' dday-soon' : '';
+      const escapedItem = item.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `<div class="dday-item">
+        <span class="dday-badge${badgeClass}">${label}</span>
+        <span class="dday-menu-text">${item}</span>
+        <span class="dday-date-text">${koreanDate(date)}</span>
+        <button class="dday-remove-btn" onclick="removeAnticipated('${date}','${escapedItem}')" title="기대 해제">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  window.toggleAnticipated = (date, item) => {
+    const idx = myAnticipated.findIndex(a => a.date === date && a.item === item);
+    if (idx >= 0) myAnticipated.splice(idx, 1);
+    else myAnticipated.push({ date, item });
+    localStorage.setItem('lb_anticipated', JSON.stringify(myAnticipated));
+    renderMenuList(currentItems);
+    renderDdayBanner();
+  };
+
+  window.removeAnticipated = (date, item) => {
+    myAnticipated = myAnticipated.filter(a => !(a.date === date && a.item === item));
+    localStorage.setItem('lb_anticipated', JSON.stringify(myAnticipated));
+    renderMenuList(currentItems);
+    renderDdayBanner();
+  };
+
   // 날짜 네비게이션
   window.navigateDate = (delta) => {
     const d = new Date(selectedDate + 'T00:00:00');
@@ -592,6 +666,7 @@
   // 초기화
   updateDateDisplay();
   subscribeMenu(selectedDate);
+  renderDdayBanner();
 
   // 쌉소리 실시간 구독
   let isAdmin = false;
