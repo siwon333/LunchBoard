@@ -162,8 +162,6 @@
     .back-btn:hover { background: #f3f4f6; }
     .friend-view-badge { font-size: 11px; color: #0ea5e9; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 20px; padding: 2px 10px; }
     .timetable-wrap { overflow-x: auto; padding: 12px 16px 8px 40px; position: relative; }
-    .time-indicator { position: absolute; left: 40px; right: 16px; height: 2px; background: #ef4444; pointer-events: none; z-index: 5; transition: top 0.5s linear; }
-    .time-indicator::before { content: attr(data-time); position: absolute; left: 0; top: 50%; transform: translate(-100%, -50%); background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 8px; white-space: nowrap; margin-left: -2px; }
     .timetable { width: 100%; border-collapse: collapse; }
     .timetable th { background: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; text-align: center; border: 1px solid #e5e7eb; }
     .timetable th.today-th { background: #0ea5e9; color: #fff; border-color: #0284c7; }
@@ -372,7 +370,6 @@
     <span style="font-size:16px;font-weight:700">소쥉's 시간표</span>
   </div>
   <div class="timetable-wrap">
-    <div id="time-indicator" class="time-indicator" style="display:none" data-time=""></div>
     <table class="timetable">
       <thead>
         <tr>
@@ -1085,18 +1082,6 @@
   // ─── 시간표 ────────────────────────────────────────────
   const TIMETABLE_PERIODS = 8;
   const TIMETABLE_DAYS = 5;
-  // 교시별 시작·끝 시각 (분 단위, 자정 기준) — 실제 시정표 기준
-  const PERIOD_MINUTES = [
-    [9*60+10,  9*60+55],    // 1교시  09:10~09:55
-    [10*60+5,  10*60+50],   // 2교시  10:05~10:50
-    [11*60,    11*60+45],   // 3교시  11:00~11:45
-    [11*60+55, 12*60+40],   // 4교시  11:55~12:40
-    [12*60+40, 13*60+20], // 점심 12:40~13:20
-    [13*60+20, 14*60+5],    // 5교시  13:20~14:05
-    [14*60+15, 15*60],      // 6교시  14:15~15:00
-    [15*60+10, 15*60+55],   // 7교시  15:10~15:55
-    [16*60+5,  16*60+50],   // 8교시  16:05~16:50
-  ];
   // 교시 표시용 시간 문자열 (인덱스 = 교시-1)
   const PERIOD_TIME_LABELS = [
     '09:10~09:55',
@@ -1108,64 +1093,6 @@
     '15:10~15:55',
     '16:05~16:50',
   ];
-  let timeIndicatorTimer = null;
-
-  function updateTimeIndicator() {
-    const indicator = document.getElementById('time-indicator');
-    const tbody = document.getElementById('timetable-body');
-    if (!indicator || !tbody) return;
-
-    const now = new Date();
-    const hm = now.getHours() * 60 + now.getMinutes();
-    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-    const [firstStart] = PERIOD_MINUTES[0];
-    const [, lastEnd] = PERIOD_MINUTES[PERIOD_MINUTES.length - 1];
-
-    if (hm < firstStart || hm > lastEnd) {
-      indicator.style.display = 'none';
-      return;
-    }
-
-    const table = tbody.closest('table');
-    const thead = table ? table.querySelector('thead') : null;
-    const theadH = thead ? thead.offsetHeight : 0;
-
-    // PERIOD_MINUTES[4]는 점심(lunch)으로, DOM 행은 data-lunch="true"
-    // 5교시 이후(i>=5)는 DOM data-period가 i-1
-    function getPeriodRow(i) {
-      if (i === 4) return tbody.querySelector('[data-lunch="true"]');
-      const domIdx = i >= 5 ? i - 1 : i;
-      return tbody.querySelector(`[data-period="${domIdx}"]`);
-    }
-
-    let topPx = null;
-    for (let i = 0; i < PERIOD_MINUTES.length; i++) {
-      const [start, end] = PERIOD_MINUTES[i];
-      const row = getPeriodRow(i);
-      if (!row) continue;
-      const rowTop = theadH + row.offsetTop;
-      const rowH = row.offsetHeight;
-
-      if (hm >= start && hm <= end) {
-        topPx = rowTop + ((hm - start) / (end - start)) * rowH;
-        break;
-      } else if (i < PERIOD_MINUTES.length - 1 && hm > end && hm < PERIOD_MINUTES[i + 1][0]) {
-        const nextRow = getPeriodRow(i + 1);
-        const nextTop = nextRow ? theadH + nextRow.offsetTop : rowTop + rowH;
-        topPx = (rowTop + rowH) + ((hm - end) / (PERIOD_MINUTES[i + 1][0] - end)) * (nextTop - rowTop - rowH);
-        break;
-      }
-    }
-
-    if (topPx !== null) {
-      indicator.style.display = '';
-      indicator.style.top = topPx + 'px';
-      indicator.setAttribute('data-time', timeStr);
-    } else {
-      indicator.style.display = 'none';
-    }
-  }
 
   // 고정 시간표 데이터 (수정 불가)
   const FIXED_SCHEDULE = {
@@ -1232,15 +1159,9 @@
     document.getElementById('tab-schedule').style.display = '';
 
     renderTimetable();
-
-    clearInterval(timeIndicatorTimer);
-    setTimeout(updateTimeIndicator, 100);
-    timeIndicatorTimer = setInterval(updateTimeIndicator, 60 * 1000);
   };
 
   window.hideSchedule = () => {
-    clearInterval(timeIndicatorTimer);
-    timeIndicatorTimer = null;
     document.getElementById('tab-schedule').style.display = 'none';
     document.getElementById('main-tabs').style.display = '';
     document.getElementById('tab-meal').style.display = '';
