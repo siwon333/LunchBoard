@@ -37,6 +37,14 @@
     .empty { text-align: center; padding: 32px 0; }
     .empty .emoji { font-size: 32px; margin-bottom: 8px; }
     .empty p { font-size: 14px; color: #9ca3af; }
+
+    /* 주말 한마디 */
+    .weekend-card { text-align: center; padding: 24px 12px 16px; }
+    .weekend-card .weekend-emoji { font-size: 44px; margin-bottom: 16px; }
+    .weekend-card .weekend-quote { font-size: 15px; font-weight: 600; color: #1f2937; line-height: 1.8; margin-bottom: 10px; word-break: keep-all; background: #f9fafb; border-radius: 12px; padding: 14px 16px; border-left: 3px solid #0ea5e9; text-align: left; }
+    .weekend-card .weekend-author { font-size: 12px; color: #9ca3af; text-align: right; padding-right: 4px; }
+    .weekend-card .weekend-refresh { margin-top: 16px; background: none; border: 1px solid #e5e7eb; border-radius: 20px; padding: 6px 16px; font-size: 12px; color: #6b7280; cursor: pointer; }
+    .weekend-card .weekend-refresh:hover { background: #f3f4f6; }
     .tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #fff; position: sticky; top: 0; z-index: 10; }
     .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280; border: none; background: none; cursor: pointer; }
     .tab.active { color: #0ea5e9; border-bottom: 2px solid #0ea5e9; }
@@ -162,8 +170,6 @@
     .back-btn:hover { background: #f3f4f6; }
     .friend-view-badge { font-size: 11px; color: #0ea5e9; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 20px; padding: 2px 10px; }
     .timetable-wrap { overflow-x: auto; padding: 12px 16px 8px 40px; position: relative; }
-    .time-indicator { position: absolute; left: 40px; right: 16px; height: 2px; background: #ef4444; pointer-events: none; z-index: 5; transition: top 0.5s linear; }
-    .time-indicator::before { content: attr(data-time); position: absolute; left: 0; top: 50%; transform: translate(-100%, -50%); background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 8px; white-space: nowrap; margin-left: -2px; }
     .timetable { width: 100%; border-collapse: collapse; }
     .timetable th { background: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; text-align: center; border: 1px solid #e5e7eb; }
     .timetable th.today-th { background: #0ea5e9; color: #fff; border-color: #0284c7; }
@@ -372,7 +378,6 @@
     <span style="font-size:16px;font-weight:700">소쥉's 시간표</span>
   </div>
   <div class="timetable-wrap">
-    <div id="time-indicator" class="time-indicator" style="display:none" data-time=""></div>
     <table class="timetable">
       <thead>
         <tr>
@@ -461,11 +466,87 @@
     document.getElementById('date-display').textContent = koreanDateFull(selectedDate) + ' 📅';
     document.getElementById('date-picker').value = selectedDate;
     const isToday = selectedDate === today;
-    document.getElementById('meal-title').textContent = isToday ? '오늘의 급식' : '급식 메뉴';
+    const weekend = isWeekend(selectedDate);
+    document.getElementById('meal-title').textContent = weekend ? '오늘의 한마디' : isToday ? '오늘의 급식' : '급식 메뉴';
     document.getElementById('today-back-btn').style.display = isToday ? 'none' : '';
   }
 
+  const WEEKEND_QUOTES = [
+    // 소소한 한마디
+    { emoji: '🌤️', quote: '쉬는 날엔 맛있는 걸 직접 먹으러 가야죠.', author: '소쥉보드' },
+    { emoji: '😴', quote: '충분한 휴식이 월요일을 버티게 해준다.', author: '소쥉보드' },
+    { emoji: '🍜', quote: '오늘은 급식 대신 나만의 최애 메뉴를 먹는 날.', author: '소쥉보드' },
+    { emoji: '🎮', quote: '게임도 하고, 맛있는 것도 먹고. 이게 주말이지.', author: '소쥉보드' },
+    { emoji: '🧇', quote: '브런치는 게으른 자의 특권이다.', author: '소쥉보드' },
+    { emoji: '🌙', quote: '오늘은 알람 없이 일어나도 된다.', author: '소쥉보드' },
+    { emoji: '🍕', quote: '주말 점심은 피자다. 이견 없음.', author: '소쥉보드' },
+    { emoji: '🥐', quote: '크루아상이랑 커피 한 잔이면 주말 완성.', author: '소쥉보드' },
+    { emoji: '💤', quote: '오늘은 아무것도 안 해도 돼. 진짜로.', author: '소쥉보드' },
+    { emoji: '🍣', quote: '오늘 점심은 급식보다 비싼 걸 먹어보자.', author: '소쥉보드' },
+    // 명언
+    { emoji: '✨', quote: '인생은 가까이서 보면 비극이지만, 멀리서 보면 희극이다.', author: '찰리 채플린' },
+    { emoji: '🌿', quote: '지금 이 순간이 언제나 있었던 것처럼 느껴질 것이다.', author: '니체' },
+    { emoji: '🔥', quote: '나는 실패한 것이 아니다. 잘 되지 않는 방법 만 가지를 찾아낸 것이다.', author: '토머스 에디슨' },
+    { emoji: '🌱', quote: '천 리 길도 한 걸음부터.', author: '노자' },
+    { emoji: '💡', quote: '아는 것이 힘이다.', author: '프랜시스 베이컨' },
+    { emoji: '🎯', quote: '당신이 할 수 있다고 생각하든, 할 수 없다고 생각하든 — 당신이 옳다.', author: '헨리 포드' },
+    { emoji: '🌊', quote: '파도를 멈출 수는 없지만, 파도를 타는 법은 배울 수 있다.', author: '존 카밧진' },
+    { emoji: '🦋', quote: '용기란 두렵지 않은 것이 아니라, 두려움보다 더 중요한 것이 있다는 판단이다.', author: '넬슨 만델라' },
+    { emoji: '⭐', quote: '별을 바라보는 사람은 발밑의 돌부리에 걸리지 않는다.', author: '오스카 와일드' },
+    { emoji: '📖', quote: '오늘 책을 읽지 않는 사람은 내일도 읽지 않는다.', author: '마크 트웨인' },
+    // 책 한마디
+    { emoji: '📚', quote: '어른이 된다는 건 소중한 것을 잃어가는 일인지도 모른다. 그래도 잃지 않으려 버텨야 한다.', author: '『채식주의자』 한강' },
+    { emoji: '🌸', quote: '벚꽃이 아름다운 건 지기 때문이야.', author: '『노르웨이의 숲』 무라카미 하루키' },
+    { emoji: '🌍', quote: '우리는 모두 누군가의 우주에서 별이 되어야 한다.', author: '『어린 왕자』 생텍쥐페리' },
+    { emoji: '🏠', quote: '집은 벽돌로 지어지는 것이 아니라 사랑으로 지어진다.', author: '『작은 아씨들』 루이자 메이 올컷' },
+    { emoji: '🔍', quote: '기억은 우리가 생각하는 것보다 훨씬 불완전하다. 하지만 그래서 더 소중하다.', author: '『82년생 김지영』 조남주' },
+    { emoji: '🎻', quote: '음악은 언어가 끝나는 곳에서 시작된다.', author: '하인리히 하이네' },
+    { emoji: '🌙', quote: '밤이 깊을수록 별이 밝다.', author: '한국 속담' },
+    { emoji: '💌', quote: '글을 쓴다는 것은 사라진 것들에게 두 번째 생을 주는 일이다.', author: '김연수' },
+    { emoji: '🍂', quote: '가을은 두 번째 봄이다. 모든 잎이 꽃이 되는.', author: '알베르 카뮈' },
+    { emoji: '🐢', quote: '느려도 괜찮다. 멈추지만 않으면 된다.', author: '공자' },
+  ];
+  let lastQuoteIdx = -1;
+  function getWeekendQuote() {
+    let idx;
+    do { idx = Math.floor(Math.random() * WEEKEND_QUOTES.length); } while (idx === lastQuoteIdx && WEEKEND_QUOTES.length > 1);
+    lastQuoteIdx = idx;
+    return WEEKEND_QUOTES[idx];
+  }
+
+  function isWeekend(dateStr) {
+    const day = new Date(dateStr + 'T00:00:00').getDay();
+    return day === 0 || day === 6;
+  }
+
+  function renderWeekendCard(q) {
+    if (!q) q = getWeekendQuote();
+    const list = document.getElementById('menu-list');
+    list.innerHTML = `<div class="weekend-card">
+      <div class="weekend-emoji">${q.emoji}</div>
+      <div class="weekend-quote">${q.quote.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      <div class="weekend-author">— ${q.author}</div>
+      <button class="weekend-refresh" onclick="fetchWeekendQuote()">다른 한마디 ↺</button>
+    </div>`;
+  }
+
+  async function fetchWeekendQuote() {
+    const list = document.getElementById('menu-list');
+    list.innerHTML = `<div class="weekend-card"><div class="weekend-emoji">⏳</div><div class="weekend-quote" style="color:#9ca3af">불러오는 중...</div></div>`;
+    try {
+      const res = await fetch('https://korean-advice-open-api.vercel.app/api/advice');
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      renderWeekendCard({ emoji: '💬', quote: data.message, author: data.author });
+    } catch {
+      renderWeekendCard(getWeekendQuote());
+    }
+  }
+
+  window.fetchWeekendQuote = fetchWeekendQuote;
+
   function renderMenuList(items) {
+    if (isWeekend(selectedDate)) { fetchWeekendQuote(); return; }
     const list = document.getElementById('menu-list');
     if (items.length > 0) {
       const hasFav = items.some(item => myFavorites.includes(item));
@@ -509,7 +590,12 @@
   };
 
   function subscribeMenu(date) {
-    if (menuUnsub) menuUnsub();
+    if (menuUnsub) { menuUnsub(); menuUnsub = null; }
+    if (isWeekend(date)) {
+      currentItems = [];
+      fetchWeekendQuote();
+      return;
+    }
     menuUnsub = onSnapshot(doc(db, 'mealMenus', date), (snap) => {
       currentItems = (snap.exists() && snap.data().items.length > 0) ? snap.data().items : [];
       renderMenuList(currentItems);
@@ -1085,18 +1171,6 @@
   // ─── 시간표 ────────────────────────────────────────────
   const TIMETABLE_PERIODS = 8;
   const TIMETABLE_DAYS = 5;
-  // 교시별 시작·끝 시각 (분 단위, 자정 기준) — 실제 시정표 기준
-  const PERIOD_MINUTES = [
-    [9*60+10,  9*60+55],    // 1교시  09:10~09:55
-    [10*60+5,  10*60+50],   // 2교시  10:05~10:50
-    [11*60,    11*60+45],   // 3교시  11:00~11:45
-    [11*60+55, 12*60+40],   // 4교시  11:55~12:40
-    [12*60+40, 13*60+20], // 점심 12:40~13:20
-    [13*60+20, 14*60+5],    // 5교시  13:20~14:05
-    [14*60+15, 15*60],      // 6교시  14:15~15:00
-    [15*60+10, 15*60+55],   // 7교시  15:10~15:55
-    [16*60+5,  16*60+50],   // 8교시  16:05~16:50
-  ];
   // 교시 표시용 시간 문자열 (인덱스 = 교시-1)
   const PERIOD_TIME_LABELS = [
     '09:10~09:55',
@@ -1108,64 +1182,6 @@
     '15:10~15:55',
     '16:05~16:50',
   ];
-  let timeIndicatorTimer = null;
-
-  function updateTimeIndicator() {
-    const indicator = document.getElementById('time-indicator');
-    const tbody = document.getElementById('timetable-body');
-    if (!indicator || !tbody) return;
-
-    const now = new Date();
-    const hm = now.getHours() * 60 + now.getMinutes();
-    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-    const [firstStart] = PERIOD_MINUTES[0];
-    const [, lastEnd] = PERIOD_MINUTES[PERIOD_MINUTES.length - 1];
-
-    if (hm < firstStart || hm > lastEnd) {
-      indicator.style.display = 'none';
-      return;
-    }
-
-    const table = tbody.closest('table');
-    const thead = table ? table.querySelector('thead') : null;
-    const theadH = thead ? thead.offsetHeight : 0;
-
-    // PERIOD_MINUTES[4]는 점심(lunch)으로, DOM 행은 data-lunch="true"
-    // 5교시 이후(i>=5)는 DOM data-period가 i-1
-    function getPeriodRow(i) {
-      if (i === 4) return tbody.querySelector('[data-lunch="true"]');
-      const domIdx = i >= 5 ? i - 1 : i;
-      return tbody.querySelector(`[data-period="${domIdx}"]`);
-    }
-
-    let topPx = null;
-    for (let i = 0; i < PERIOD_MINUTES.length; i++) {
-      const [start, end] = PERIOD_MINUTES[i];
-      const row = getPeriodRow(i);
-      if (!row) continue;
-      const rowTop = theadH + row.offsetTop;
-      const rowH = row.offsetHeight;
-
-      if (hm >= start && hm <= end) {
-        topPx = rowTop + ((hm - start) / (end - start)) * rowH;
-        break;
-      } else if (i < PERIOD_MINUTES.length - 1 && hm > end && hm < PERIOD_MINUTES[i + 1][0]) {
-        const nextRow = getPeriodRow(i + 1);
-        const nextTop = nextRow ? theadH + nextRow.offsetTop : rowTop + rowH;
-        topPx = (rowTop + rowH) + ((hm - end) / (PERIOD_MINUTES[i + 1][0] - end)) * (nextTop - rowTop - rowH);
-        break;
-      }
-    }
-
-    if (topPx !== null) {
-      indicator.style.display = '';
-      indicator.style.top = topPx + 'px';
-      indicator.setAttribute('data-time', timeStr);
-    } else {
-      indicator.style.display = 'none';
-    }
-  }
 
   // 고정 시간표 데이터 (수정 불가)
   const FIXED_SCHEDULE = {
@@ -1232,15 +1248,9 @@
     document.getElementById('tab-schedule').style.display = '';
 
     renderTimetable();
-
-    clearInterval(timeIndicatorTimer);
-    setTimeout(updateTimeIndicator, 100);
-    timeIndicatorTimer = setInterval(updateTimeIndicator, 60 * 1000);
   };
 
   window.hideSchedule = () => {
-    clearInterval(timeIndicatorTimer);
-    timeIndicatorTimer = null;
     document.getElementById('tab-schedule').style.display = 'none';
     document.getElementById('main-tabs').style.display = '';
     document.getElementById('tab-meal').style.display = '';
