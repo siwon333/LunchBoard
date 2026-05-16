@@ -519,21 +519,34 @@
     return day === 0 || day === 6;
   }
 
-  function renderWeekendCard() {
-    const q = getWeekendQuote();
+  function renderWeekendCard(q) {
+    if (!q) q = getWeekendQuote();
     const list = document.getElementById('menu-list');
     list.innerHTML = `<div class="weekend-card">
       <div class="weekend-emoji">${q.emoji}</div>
-      <div class="weekend-quote">${q.quote}</div>
+      <div class="weekend-quote">${q.quote.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
       <div class="weekend-author">— ${q.author}</div>
-      <button class="weekend-refresh" onclick="refreshWeekendQuote()">다른 한마디 ↺</button>
+      <button class="weekend-refresh" onclick="fetchWeekendQuote()">다른 한마디 ↺</button>
     </div>`;
   }
 
-  window.refreshWeekendQuote = () => renderWeekendCard();
+  async function fetchWeekendQuote() {
+    const list = document.getElementById('menu-list');
+    list.innerHTML = `<div class="weekend-card"><div class="weekend-emoji">⏳</div><div class="weekend-quote" style="color:#9ca3af">불러오는 중...</div></div>`;
+    try {
+      const res = await fetch('https://korean-advice-open-api.vercel.app/api/advice');
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      renderWeekendCard({ emoji: '💬', quote: data.message, author: data.author });
+    } catch {
+      renderWeekendCard(getWeekendQuote());
+    }
+  }
+
+  window.fetchWeekendQuote = fetchWeekendQuote;
 
   function renderMenuList(items) {
-    if (isWeekend(selectedDate)) { renderWeekendCard(); return; }
+    if (isWeekend(selectedDate)) { fetchWeekendQuote(); return; }
     const list = document.getElementById('menu-list');
     if (items.length > 0) {
       const hasFav = items.some(item => myFavorites.includes(item));
@@ -580,7 +593,7 @@
     if (menuUnsub) { menuUnsub(); menuUnsub = null; }
     if (isWeekend(date)) {
       currentItems = [];
-      renderWeekendCard();
+      fetchWeekendQuote();
       return;
     }
     menuUnsub = onSnapshot(doc(db, 'mealMenus', date), (snap) => {
