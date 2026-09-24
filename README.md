@@ -1,8 +1,4 @@
 # 🍱 LunchBoard
-
-급식 메뉴를 확인하고 소통할 수 있는 웹앱.
-GitHub Pages로 배포되며, Firebase Firestore를 백엔드로 사용합니다.
-
 ## 기능
 
 - **급식 메뉴 조회** — 날짜 화살표 또는 달력으로 날짜 이동
